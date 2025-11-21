@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>কর্মচারী পোর্টাল - আধুনিক ড্যাশবোর্ড</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Toast Notifications -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="screen active">
+        <div class="auth-wrapper">
+            <div class="auth-background"></div>
+            <div class="auth-content">
+                <div class="auth-card">
+                    <div class="auth-logo">
+                        <i class="fas fa-building"></i>
+                        <h1>কর্মচারী পোর্টাল</h1>
+                        <p>আপনার উপস্থিতি এবং প্রোফাইল পরিচালনা করুন</p>
+                    </div>
+
+                    <div class="auth-tabs">
+                        <button class="auth-tab active" data-tab="login">
+                            <i class="fas fa-sign-in-alt"></i>
+                            <span>লগইন</span>
+                        </button>
+                        <button class="auth-tab" data-tab="register">
+                            <i class="fas fa-user-plus"></i>
+                            <span>নিবন্ধন</span>
+                        </button>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form id="login-form" class="auth-form active">
+                        <div class="input-group">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="login-id" placeholder="কর্মচারী আইডি" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="login-password" placeholder="পাসওয়ার্ড" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-sign-in-alt"></i>
+                            লগইন করুন
+                        </button>
+                    </form>
+
+                    <!-- Register Form -->
+                    <form id="register-form" class="auth-form">
+                        <div class="input-group">
+                            <i class="fas fa-user"></i>
+                            <input type="text" id="register-name" placeholder="পূর্ণ নাম" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-id-card"></i>
+                            <input type="text" id="register-id" placeholder="কর্মচারী আইডি" required>
+                        </div>
+                        <div class="input-group">
+                            <i class="fas fa-lock"></i>
+                            <input type="password" id="register-password" placeholder="পাসওয়ার্ড তৈরি করুন" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-user-plus"></i>
+                            নিবন্ধন করুন
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Profile Setup Screen -->
+    <div id="profile-setup-screen" class="screen">
+        <div class="setup-wrapper">
+            <div class="setup-card">
+                <div class="setup-header">
+                    <i class="fas fa-user-cog"></i>
+                    <h2>প্রোফাইল সম্পূর্ণ করুন</h2>
+                    <p>আপনার তথ্য প্রদান করুন</p>
+                </div>
+
+                <form id="profile-setup-form">
+                    <!-- Photo Upload -->
+                    <div class="photo-upload">
+                        <div class="photo-preview" id="setup-photo-preview">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <input type="file" id="profile-image" accept="image/*" hidden>
+                        <button type="button" class="btn btn-secondary" id="upload-photo-btn">
+                            <i class="fas fa-camera"></i>
+                            ছবি আপলোড
+                        </button>
+                    </div>
+
+                    <div class="form-section">
+                        <h3><i class="fas fa-user"></i> ব্যক্তিগত তথ্য</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>কোম্পানি</label>
+                                <input type="text" id="setup-company" required>
+                            </div>
+                            <div class="form-group">
+                                <label>নাম</label>
+                                <input type="text" id="setup-name" required>
+                            </div>
+                            <div class="form-group">
+                                <label>কার্ড নং</label>
+                                <input type="text" id="setup-card-no" required>
+                            </div>
+                            <div class="form-group">
+                                <label>সেকশন</label>
+                                <input type="text" id="setup-section" required>
+                            </div>
+                            <div class="form-group">
+                                <label>পদবি</label>
+                                <input type="text" id="setup-designation" required>
+                            </div>
+                            <div class="form-group">
+                                <label>গ্রেড</label>
+                                <input type="text" id="setup-grade" required>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h3><i class="fas fa-money-bill-wave"></i> বেতন তথ্য</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>মূল মজুরি</label>
+                                <input type="number" id="setup-basic-salary" required min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>বাড়ী ভাড়া</label>
+                                <input type="number" id="setup-house-rent" value="0" min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>চিকিৎসা যাতায়াত ভাতা</label>
+                                <input type="number" id="setup-medical-transport" value="0" min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>ওভারটাইম রেট</label>
+                                <input type="number" id="setup-ot-rate" required min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>হাজিরা বোনাস</label>
+                                <input type="number" id="setup-present-bonus" value="0" min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>রাত্রিকালীন ভাতা</label>
+                                <input type="number" id="setup-night-allowance" value="0" min="0" step="0.01">
+                            </div>
+                            <div class="form-group">
+                                <label>টিফিন বিল</label>
+                                <input type="number" id="setup-tiffin" value="0" min="0" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary btn-block">
+                            <i class="fas fa-check"></i>
+                            সেটআপ সম্পূর্ণ করুন
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dashboard Screen -->
+    <div id="dashboard-screen" class="screen">
+        <!-- Mobile Header -->
+        <div class="mobile-header">
+            <button class="menu-toggle" id="menu-toggle">
+                <i class="fas fa-bars"></i>
+            </button>
+            <div class="mobile-logo">
+                <i class="fas fa-building"></i>
+                <span>পোর্টাল</span>
+            </div>
+            <div class="mobile-user">
+                <img id="mobile-user-avatar" src="" alt="" style="display: none;">
+                <i class="fas fa-user-circle"></i>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <div class="sidebar-logo">
+                    <i class="fas fa-building"></i>
+                    <span>কর্মচারী পোর্টাল</span>
+                </div>
+                <button class="sidebar-close" id="sidebar-close">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+
+            <div class="sidebar-user">
+                <div class="user-avatar">
+                    <img id="sidebar-user-avatar" src="" alt="" style="display: none;">
+                    <i class="fas fa-user-circle"></i>
+                </div>
+                <div class="user-info">
+                    <h3 id="sidebar-user-name">কর্মচারী</h3>
+                    <p id="sidebar-user-role">লোড হচ্ছে...</p>
+                </div>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-link active" data-view="overview">
+                    <i class="fas fa-chart-line"></i>
+                    <span>ওভারভিউ</span>
+                </a>
+                <a href="#" class="nav-link" data-view="history">
+                    <i class="fas fa-history"></i>
+                    <span>কাজের ইতিহাস</span>
+                </a>
+                <a href="#" class="nav-link" data-view="profile">
+                    <i class="fas fa-user"></i>
+                    <span>আমার প্রোফাইল</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <button class="btn btn-outline btn-block" id="logout-btn">
+                    <i class="fas fa-sign-out-alt"></i>
+                    লগআউট
+                </button>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-header">
+                <div>
+                    <h1 id="page-title">ড্যাশবোর্ড ওভারভিউ</h1>
+                    <p id="page-subtitle">ফিরে আসার জন্য স্বাগতম! এখানে আপনার সারসংক্ষেপ</p>
+                </div>
+                <div class="header-date">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span id="current-date">লোড হচ্ছে...</span>
+                </div>
+            </div>
+
+            <!-- Overview View -->
+            <div id="overview-view" class="view active">
+                <!-- Profile Summary Card -->
+                <div class="profile-summary-card">
+                    <div class="profile-banner">
+                        <button class="btn btn-primary banner-edit-btn" id="banner-edit-profile-btn">
+                            <i class="fas fa-edit"></i>
+                            প্রোফাইল সম্পাদনা
+                        </button>
+                    </div>
+                    <div class="profile-content">
+                        <div class="profile-avatar">
+                            <img id="profile-avatar" src="" alt="" style="display: none;">
+                            <i class="fas fa-user-circle"></i>
+                        </div>
+                        <div class="profile-details">
+                            <h2 id="profile-name">কর্মচারীর নাম</h2>
+                            <p id="profile-designation">পদবি</p>
+                            <div class="profile-meta">
+                                <span><i class="fas fa-building"></i> <span id="profile-company">কোম্পানি</span></span>
+                                <span><i class="fas fa-wallet"></i> <span id="profile-salary">৳০</span></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="stats-grid first-two">
+                    <div class="stat-card primary">
+                        <div class="stat-icon">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">মোট বেতন (এই মাস)</span>
+                            <span class="stat-value" id="stat-total-salary">৳০</span>
+                        </div>
+                    </div>
+		    <div class="stat-card danger">
+                        <div class="stat-icon">
+                            <i class="fas fa-minus-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">মোট কর্তন</span>
+                            <span class="stat-value" id="stat-deduction">৳০</span>
+                        </div>
+                    </div>
+	       </div>
+	       <div class="stats-grid">
+                    <div class="stat-card info">
+                        <div class="stat-icon">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">মোট ওভারটাইম ঘণ্টা</span>
+                            <span class="stat-value" id="stat-total-ot">0ঘণ্টা</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card secondary">
+                        <div class="stat-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">ওভারটাইম অর্থ</span>
+                            <span class="stat-value" id="stat-ot-amount">৳০</span>
+                        </div>
+                    </div>
+                    <div class="stat-card success">
+                        <div class="stat-icon">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">উপস্থিত দিন</span>
+                            <span class="stat-value" id="stat-present">0</span>
+                        </div>
+                    </div>
+
+                    <div class="stat-card warning">
+                        <div class="stat-icon">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <div class="stat-content">
+                            <span class="stat-label">অনুপস্থিত দিন</span>
+                            <span class="stat-value" id="stat-absent">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History View -->
+            <div id="history-view" class="view">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-history"></i> কাজের ইতিহাস</h3>
+                        <select id="history-month-select"></select>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table">
+                                <thead>
+   					 <tr>
+        					<th>তারিখ</th>
+       						 <th>স্ট্যাটাস</th>
+        					<th>বেসিক ঘণ্টা</th>
+        					<th>ওভারটাইম</th>
+       						 <th>মোট ঘণ্টা</th>
+       						 <th>বেতন</th>
+       						 <th>কর্তন</th>
+   					 </tr>
+				</thead>
+                                <tbody id="history-tbody">
+                                    <tr>
+                                        <td colspan="7" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile View -->
+            <div id="profile-view" class="view">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-user"></i> আমার প্রোফাইল</h3>
+                        <button class="btn btn-primary" id="edit-profile-btn">
+                            <i class="fas fa-edit"></i>
+                            সম্পাদনা
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <!-- View Mode -->
+                        <div id="profile-view-mode">
+                            <div class="profile-info-card">
+                                <div class="profile-photo">
+                                    <img id="view-profile-photo" src="" alt="" style="display: none;">
+                                    <i class="fas fa-user-circle"></i>
+                                </div>
+                                <div class="profile-basic">
+                                    <h2 id="view-profile-name">কর্মচারীর নাম</h2>
+                                    <p id="view-profile-designation">পদবি</p>
+                                    <div class="profile-badges">
+                                        <span class="badge"><i class="fas fa-building"></i> <span id="view-profile-company">কোম্পানি</span></span>
+                                        <span class="badge"><i class="fas fa-id-card"></i> <span id="view-profile-id">ID</span></span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-section">
+                                <h4><i class="fas fa-info-circle"></i> ব্যক্তিগত তথ্য</h4>
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <label>কার্ড নং</label>
+                                        <span id="view-card-no">N/A</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>সেকশন</label>
+                                        <span id="view-section">N/A</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>পদবি</label>
+                                        <span id="view-designation">N/A</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>গ্রেড</label>
+                                        <span id="view-grade">N/A</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-section salary-section">
+                                <h4><i class="fas fa-money-bill-wave"></i> বেতন তথ্য</h4>
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <label>মূল মজুরি</label>
+                                        <span id="view-basic-salary" class="highlight">৳০</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>বাড়ী ভাড়া</label>
+                                        <span id="view-house-rent">৳০</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>চিকিৎসা যাতায়াত</label>
+                                        <span id="view-medical-transport">৳০</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>মোট মজুরি</label>
+                                        <span id="view-total-salary" class="highlight">৳০</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="info-section allowance-section">
+                                <h4><i class="fas fa-gift"></i> অতিরিক্ত ভাতা</h4>
+                                <div class="info-grid">
+                                    <div class="info-item">
+                                        <label>ওভারটাইম রেট</label>
+                                        <span id="view-ot-rate">৳০</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>হাজিরা বোনাস</label>
+                                        <span id="view-bonus">৳০</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>রাত্রিকালীন ভাতা</label>
+                                        <span id="view-night">৳০</span>
+                                    </div>
+                                    <div class="info-item">
+                                        <label>টিফিন বিল</label>
+                                        <span id="view-tiffin">৳০</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Edit Mode -->
+                        <div id="profile-edit-mode" style="display: none;">
+                            <form id="edit-profile-form">
+                                <!-- Photo Upload -->
+                                <div class="photo-upload">
+                                    <div class="photo-preview" id="edit-photo-preview">
+                                        <i class="fas fa-user"></i>
+                                    </div>
+                                    <input type="file" id="edit-profile-image" accept="image/*" hidden>
+                                    <button type="button" class="btn btn-secondary" id="edit-upload-photo-btn">
+                                        <i class="fas fa-camera"></i>
+                                        ছবি পরিবর্তন
+                                    </button>
+                                </div>
+
+                                <div class="form-section">
+                                    <h3><i class="fas fa-user"></i> ব্যক্তিগত তথ্য</h3>
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label>কোম্পানি</label>
+                                            <input type="text" id="edit-company" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>নাম</label>
+                                            <input type="text" id="edit-name" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>কার্ড নং</label>
+                                            <input type="text" id="edit-card-no" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>সেকশন</label>
+                                            <input type="text" id="edit-section" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>পদবি</label>
+                                            <input type="text" id="edit-designation" required>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>গ্রেড</label>
+                                            <input type="text" id="edit-grade" required>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-section">
+                                    <h3><i class="fas fa-money-bill-wave"></i> বেতন তথ্য</h3>
+                                    <div class="form-grid">
+                                        <div class="form-group">
+                                            <label>মূল মজুরি</label>
+                                            <input type="number" id="edit-basic-salary" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>বাড়ী ভাড়া</label>
+                                            <input type="number" id="edit-house-rent" value="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>চিকিৎসা যাতায়াত</label>
+                                            <input type="number" id="edit-medical-transport" value="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>ওভারটাইম রেট</label>
+                                            <input type="number" id="edit-ot-rate" required min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>হাজিরা বোনাস</label>
+                                            <input type="number" id="edit-present-bonus" value="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>রাত্রিকালীন ভাতা</label>
+                                            <input type="number" id="edit-night-allowance" value="0" min="0" step="0.01">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>টিফিন বিল</label>
+                                            <input type="number" id="edit-tiffin" value="0" min="0" step="0.01">
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="form-actions">
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="fas fa-save"></i>
+                                        সংরক্ষণ
+                                    </button>
+                                    <button type="button" class="btn btn-outline" id="cancel-edit-btn">
+                                        <i class="fas fa-times"></i>
+                                        বাতিল
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Floating Action Button -->
+        <div class="fab-container">
+            <button class="fab-btn" id="fab-main">
+                <i class="fas fa-plus"></i>
+            </button>
+        </div>
+
+        <!-- Attendance Modal -->
+        <div id="attendance-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3>উপস্থিতি রেকর্ড করুন</h3>
+                    <button class="modal-close" id="modal-close">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <!-- Step 1: Select Attendance Type -->
+                    <div id="step-1" class="modal-step active">
+                        <div class="attendance-options">
+                            <div class="attendance-option" data-type="present">
+                                <div class="option-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h4>উপস্থিত</h4>
+                                    <p>আজ কাজ করেছেন</p>
+                                </div>
+                            </div>
+
+                            <div class="attendance-option" data-type="absent">
+                                <div class="option-icon danger">
+                                    <i class="fas fa-times-circle"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h4>অনুপস্থিত</h4>
+                                    <p>কাজে আসতে পারেননি</p>
+                                </div>
+                            </div>
+
+                            <div class="attendance-option" data-type="offday">
+                                <div class="option-icon info">
+                                    <i class="fas fa-umbrella-beach"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h4>ছুটির দিন</h4>
+                                    <p>সাপ্তাহিক বা সরকারি ছুটি</p>
+                                </div>
+                            </div>
+
+                            <div class="attendance-option" data-type="leave">
+                                <div class="option-icon warning">
+                                    <i class="fas fa-calendar-alt"></i>
+                                </div>
+                                <div class="option-content">
+                                    <h4>ছুটি নিন</h4>
+                                    <p>ব্যক্তিগত ছুটি</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Step 2: Present Details -->
+                    <div id="step-2-present" class="modal-step">
+                        <form id="present-form">
+                            <div class="form-group">
+                                <label>তারিখ</label>
+                                <input type="date" id="present-date" required>
+                            </div>
+                            <div class="form-group">
+                                <label>ওভারটাইম ঘণ্টা</label>
+                                <select id="ot-hours" required>
+                                    <option value="0">কোন OT নেই</option>
+                                    <option value="1">1 ঘণ্টা (সন্ধ্যা ৬টা পর্যন্ত)</option>
+                                    <option value="2">2 ঘণ্টা (সন্ধ্যা ৭টা পর্যন্ত)</option>
+                                    <option value="3">3 ঘণ্টা (রাত ৮টা পর্যন্ত)</option>
+                                    <option value="4">4 ঘণ্টা (রাত ৯টা পর্যন্ত)</option>
+                                    <option value="5">5 ঘণ্টা (রাত ১০টা পর্যন্ত) - টিফিন বিল</option>
+                                    <option value="6">6 ঘণ্টা (রাত ১১টা পর্যন্ত) - টিফিন বিল</option>
+                                    <option value="7">7+ ঘণ্টা (রাত ১১টার পরে) - টিফিন + নাইট বিল</option>
+                                </select>
+                            </div>
+                            <div class="calculation-preview" id="present-calculation">
+                                <h4>গণনা প্রিভিউ:</h4>
+                                <div class="calc-item">
+                                    <span>মূল কাজ:</span>
+                                    <span>8 ঘণ্টা</span>
+                                </div>
+                                <div class="calc-item">
+                                    <span>ওভারটাইম:</span>
+                                    <span id="preview-ot">0 ঘণ্টা</span>
+                                </div>
+                                <div class="calc-item">
+                                    <span>মোট কাজ:</span>
+                                    <span id="preview-total">8 ঘণ্টা</span>
+                                </div>
+                                <div class="calc-item bonus" id="preview-tiffin" style="display: none;">
+                                    <span>টিফিন বিল:</span>
+                                    <span id="preview-tiffin-amount">৳0</span>
+                                </div>
+                                <div class="calc-item bonus" id="preview-night" style="display: none;">
+                                    <span>নাইট বিল:</span>
+                                    <span id="preview-night-amount">৳0</span>
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success btn-block">
+                                <i class="fas fa-check"></i>
+                                উপস্থিত রেকর্ড করুন
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Step 2: Absent Details -->
+                    <div id="step-2-absent" class="modal-step">
+                        <form id="absent-form">
+                            <div class="form-group">
+                                <label>তারিখ</label>
+                                <input type="date" id="absent-date" required>
+                            </div>
+                            <div class="form-group">
+                                <label>কারণ (ঐচ্ছিক)</label>
+                                <input type="text" id="absent-reason" placeholder="অনুপস্থিতির কারণ">
+                            </div>
+                            <div class="warning-message">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <span>এই দিনের বেতন কর্তন করা হবে</span>
+                            </div>
+                            <button type="submit" class="btn btn-warning btn-block">
+                                <i class="fas fa-times"></i>
+                                অনুপস্থিত রেকর্ড করুন
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Step 2: Offday Details -->
+                    <div id="step-2-offday" class="modal-step">
+                        <form id="offday-form">
+                            <div class="form-group">
+                                <label>তারিখ</label>
+                                <input type="date" id="offday-date" required>
+                            </div>
+                            <div class="form-group">
+                                <label>ছুটির ধরন</label>
+                                <select id="offday-type" required>
+                                    <option value="friday">শুক্রবার</option>
+                                    <option value="weekend">সাপ্তাহিক ছুটি</option>
+                                    <option value="holiday">সরকারি ছুটি</option>
+                                    <option value="company">কোম্পানির ছুটি</option>
+                                </select>
+                            </div>
+                            <div class="info-message">
+                                <i class="fas fa-info-circle"></i>
+                                <span>ছুটির দিনে কোন বেতন কর্তন হবেনা</span>
+                            </div>
+                            <button type="submit" class="btn btn-info btn-block">
+                                <i class="fas fa-umbrella-beach"></i>
+                                ছুটি রেকর্ড করুন
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Step 2: Leave Details -->
+                    <div id="step-2-leave" class="modal-step">
+                        <form id="leave-form">
+                            <div class="form-group">
+                                <label>তারিখ</label>
+                                <input type="date" id="leave-date" required>
+                            </div>
+                            <div class="form-group">
+                                <label>ছুটির ধরন</label>
+                                <select id="leave-type" required>
+                                    <option value="casual">ক্যাজুয়াল ছুটি</option>
+                                    <option value="sick">অসুস্থতার ছুটি</option>
+                                    <option value="earned">আর্নড লিভ</option>
+                                    <option value="personal">ব্যক্তিগত ছুটি</option>
+                                </select>
+                            </div>
+                            <div class="info-message">
+                                <i class="fas fa-info-circle"></i>
+                                <span>অনুমোদিত ছুটিতে কোন বেতন কর্তন হবেনা</span>
+                            </div>
+                            <button type="submit" class="btn btn-primary btn-block">
+                                <i class="fas fa-calendar-alt"></i>
+                                ছুটি রেকর্ড করুন
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Enhanced Loading Screen -->
+    <div id="loading-screen" class="screen">
+        <div class="loading-content">
+            <div class="loading-logo">
+                <i class="fas fa-building"></i>
+            </div>
+
+            <div class="spinner-container">
+                <div class="spinner"></div>
+                <div class="spinner-inner"></div>
+            </div>
+
+            <h2>কর্মচারী পোর্টাল</h2>
+            <p>আপনার ড্যাশবোর্ড লোড হচ্ছে...</p>
+
+            <div class="loading-dots">
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+                <div class="loading-dot"></div>
+            </div>
+
+            <div class="loading-progress">
+                <div class="loading-progress-bar"></div>
+            </div>
+        </div>
+    </div>
+        <!-- Register Service Worker for Offline Support -->
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./service-worker.js')
+                    .then(registration => {
+                        console.log('✅ Service Worker registered:', registration.scope);
+                    })
+                    .catch(error => {
+                        console.log('❌ Service Worker registration failed:', error);
+                    });
+            });
+        }
+    </script>
+
+    <script src="config.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>

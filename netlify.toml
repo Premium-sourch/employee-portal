@@ -1,0 +1,187 @@
+# ============================================================================
+# Netlify Configuration for Employee Portal
+# Save this as: netlify.toml in your project root
+# ============================================================================
+
+# Build settings
+[build]
+  # Directory to publish (current directory since we're deploying static files)
+  publish = "."
+  
+  # No build command needed for static site
+  command = ""
+
+# ============================================================================
+# Security Headers
+# ============================================================================
+
+[[headers]]
+  # Apply to all pages
+  for = "/*"
+  [headers.values]
+    # Prevent clickjacking
+    X-Frame-Options = "DENY"
+    
+    # Prevent MIME type sniffing
+    X-Content-Type-Options = "nosniff"
+    
+    # Enable XSS protection
+    X-XSS-Protection = "1; mode=block"
+    
+    # Referrer policy
+    Referrer-Policy = "strict-origin-when-cross-origin"
+    
+    # Permissions policy
+    Permissions-Policy = "geolocation=(), microphone=(), camera=()"
+
+# ============================================================================
+# Service Worker Configuration
+# ============================================================================
+
+[[headers]]
+  # Service Worker specific headers
+  for = "/service-worker.js"
+  [headers.values]
+    # Don't cache the service worker file itself
+    Cache-Control = "public, max-age=0, must-revalidate"
+    
+    # Allow service worker to control the entire site
+    Service-Worker-Allowed = "/"
+    
+    # Correct content type
+    Content-Type = "application/javascript; charset=utf-8"
+
+# ============================================================================
+# JavaScript Files Caching
+# ============================================================================
+
+[[headers]]
+  # Cache JavaScript files for 1 year (immutable)
+  for = "/*.js"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "application/javascript; charset=utf-8"
+
+# ============================================================================
+# CSS Files Caching
+# ============================================================================
+
+[[headers]]
+  # Cache CSS files for 1 year (immutable)
+  for = "/*.css"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "text/css; charset=utf-8"
+
+# ============================================================================
+# HTML Files Caching
+# ============================================================================
+
+[[headers]]
+  # Don't cache HTML files (always get fresh)
+  for = "/*.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
+
+# ============================================================================
+# Image Caching (if you add images later)
+# ============================================================================
+
+[[headers]]
+  for = "/*.png"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.jpg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.jpeg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.svg"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Content-Type = "image/svg+xml; charset=utf-8"
+
+# ============================================================================
+# Font Files Caching
+# ============================================================================
+
+[[headers]]
+  for = "/*.woff"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.woff2"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/*.ttf"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# ============================================================================
+# Redirects
+# ============================================================================
+
+# Redirect to index.html for client-side routing (if needed)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+  # Only apply if file doesn't exist
+  conditions = {Role = ["guest"]}
+
+# ============================================================================
+# Custom Error Pages
+# ============================================================================
+
+# Offline page for PWA
+[[redirects]]
+  from = "/offline"
+  to = "/offline.html"
+  status = 200
+
+# ============================================================================
+# Environment Variables (Optional - Set in Netlify UI)
+# ============================================================================
+
+# You can set these in Netlify Dashboard > Site Settings > Environment Variables
+# Example:
+# [context.production.environment]
+#   API_URL = "your-google-apps-script-url"
+
+# ============================================================================
+# Deploy Previews & Branch Deploys
+# ============================================================================
+
+[context.deploy-preview]
+  # Don't publish deploy previews by default
+  publish = "."
+
+[context.branch-deploy]
+  # Settings for branch deploys
+  publish = "."
+
+# ============================================================================
+# Functions (Not used in this project, but here for future)
+# ============================================================================
+
+[functions]
+  # If you ever add Netlify Functions
+  directory = "functions"
+
+# ============================================================================
+# Forms (Not used in this project)
+# ============================================================================
+
+# Netlify Forms - disabled since we use Google Apps Script
+[build.environment]
+  # No environment variables needed for build
