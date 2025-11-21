@@ -1,14 +1,6 @@
-# ============================================================================
-# Netlify Configuration for Employee Portal
-# ============================================================================
-
 [build]
   publish = "."
   command = "chmod +x build.sh && bash build.sh"
-
-# ============================================================================
-# Security Headers
-# ============================================================================
 
 [[headers]]
   for = "/*"
@@ -52,43 +44,3 @@
   from = "/offline"
   to = "/offline.html"
   status = 200
-```
-
----
-
-### **Step 8: Update .gitignore**
-
-**Make sure your `.gitignore` contains:**
-```
-# Configuration files
-config.js
-config.js.bak
-
-# Build files
-build.sh.log
-
-# Environment variables
-.env
-.env.local
-
-# Dependencies
-node_modules/
-
-# OS files
-.DS_Store
-Thumbs.db
-.DS_Store?
-._*
-
-# Editor files
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
