@@ -80,14 +80,32 @@ body {
     border-left: 4px solid var(--primary);
 }
 
-.toast.success { border-left-color: var(--success); }
-.toast.error { border-left-color: var(--danger); }
-.toast.warning { border-left-color: var(--warning); }
-.toast.info { border-left-color: var(--info); }
+.toast.success {
+    border-left-color: var(--success);
+}
+
+.toast.error {
+    border-left-color: var(--danger);
+}
+
+.toast.warning {
+    border-left-color: var(--warning);
+}
+
+.toast.info {
+    border-left-color: var(--info);
+}
 
 @keyframes slideInRight {
-    from { opacity: 0; transform: translateX(100px); }
-    to { opacity: 1; transform: translateX(0); }
+    from {
+        opacity: 0;
+        transform: translateX(100px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
 }
 
 /* Screen Management */
@@ -101,8 +119,13 @@ body {
 }
 
 @keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
 }
 
 /* Auth Screen */
@@ -137,14 +160,19 @@ body {
     left: -50%;
     width: 200%;
     height: 200%;
-    background: radial-gradient(circle, rgba(255,255,255,0.1) 1px, transparent 1px);
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
     background-size: 50px 50px;
     animation: backgroundMove 20s linear infinite;
 }
 
 @keyframes backgroundMove {
-    0% { transform: translate(0, 0); }
-    100% { transform: translate(50px, 50px); }
+    0% {
+        transform: translate(0, 0);
+    }
+
+    100% {
+        transform: translate(50px, 50px);
+    }
 }
 
 .auth-content {
@@ -476,7 +504,7 @@ body {
     width: 100%;
     height: 100%;
     background: radial-gradient(circle at 20% 50%, rgba(99, 102, 241, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.3) 0%, transparent 50%);
+        radial-gradient(circle at 80% 80%, rgba(139, 92, 246, 0.3) 0%, transparent 50%);
     pointer-events: none;
     z-index: 0;
 }
@@ -759,6 +787,7 @@ body {
     z-index: 5;
     position: relative;
 }
+
 .banner-edit-btn:hover {
     background: var(--gray-100) !important;
     transform: translateY(-2px);
@@ -871,28 +900,33 @@ body {
     background: rgba(255, 255, 255, 0.2);
 }
 
-.stat-card.primary { 
-    border-left-color: var(--primary-light); 
+.stat-card.primary {
+    border-left-color: var(--primary-light);
     background: rgba(99, 102, 241, 0.1);
 }
-.stat-card.success { 
-    border-left-color: var(--success); 
+
+.stat-card.success {
+    border-left-color: var(--success);
     background: rgba(16, 185, 129, 0.1);
 }
-.stat-card.warning { 
-    border-left-color: var(--warning); 
+
+.stat-card.warning {
+    border-left-color: var(--warning);
     background: rgba(245, 158, 11, 0.1);
 }
-.stat-card.info { 
-    border-left-color: var(--info); 
+
+.stat-card.info {
+    border-left-color: var(--info);
     background: rgba(59, 130, 246, 0.1);
 }
-.stat-card.secondary { 
-    border-left-color: var(--secondary); 
+
+.stat-card.secondary {
+    border-left-color: var(--secondary);
     background: rgba(139, 92, 246, 0.1);
 }
-.stat-card.danger { 
-    border-left-color: var(--danger); 
+
+.stat-card.danger {
+    border-left-color: var(--danger);
     background: rgba(239, 68, 68, 0.1);
 }
 
@@ -1305,6 +1339,7 @@ body {
         opacity: 0;
         transform: translateY(-50px);
     }
+
     to {
         opacity: 1;
         transform: translateY(0);
@@ -1466,7 +1501,8 @@ body {
 }
 
 /* Messages - Glass Effect */
-.warning-message, .info-message {
+.warning-message,
+.info-message {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -1528,6 +1564,7 @@ body {
         opacity: 0;
         transform: scale(0.9) translateY(20px);
     }
+
     to {
         opacity: 1;
         transform: scale(1) translateY(0);
@@ -1542,10 +1579,13 @@ body {
 }
 
 @keyframes logoPulse {
-    0%, 100% {
+
+    0%,
+    100% {
         transform: scale(1);
         opacity: 1;
     }
+
     50% {
         transform: scale(1.1);
         opacity: 0.8;
@@ -1599,13 +1639,23 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 @keyframes spinReverse {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(-360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(-360deg);
+    }
 }
 
 /* Loading Dots */
@@ -1624,15 +1674,27 @@ body {
     animation: dotPulse 1.4s ease-in-out infinite both;
 }
 
-.loading-dot:nth-child(1) { animation-delay: -0.32s; }
-.loading-dot:nth-child(2) { animation-delay: -0.16s; }
-.loading-dot:nth-child(3) { animation-delay: 0s; }
+.loading-dot:nth-child(1) {
+    animation-delay: -0.32s;
+}
+
+.loading-dot:nth-child(2) {
+    animation-delay: -0.16s;
+}
+
+.loading-dot:nth-child(3) {
+    animation-delay: 0s;
+}
 
 @keyframes dotPulse {
-    0%, 80%, 100% {
+
+    0%,
+    80%,
+    100% {
         transform: scale(0.8);
         opacity: 0.5;
     }
+
     40% {
         transform: scale(1.2);
         opacity: 1;
@@ -1660,9 +1722,11 @@ body {
     0% {
         transform: translateX(-100%);
     }
+
     50% {
         transform: translateX(100%);
     }
+
     100% {
         transform: translateX(100%);
     }
@@ -1779,7 +1843,7 @@ body {
 
     .content-header {
         padding: 20px 24px;
-	flex-wrap: nowrap;
+        flex-wrap: nowrap;
     }
 
     .content-header h1 {
@@ -1812,12 +1876,15 @@ body {
     .stats-grid {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
+
     .first-two {
-        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr))!important;
-	}
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)) !important;
+    }
+
     .info-grid {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
+
     .form-grid {
         grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
     }
@@ -1860,22 +1927,22 @@ body {
         bottom: 20px;
         right: 20px;
     }
-    
+
     .fab-btn {
         width: 56px;
         height: 56px;
         font-size: 20px;
     }
-    
+
     .modal-content {
         width: 95%;
         margin: 20px;
     }
-    
+
     .attendance-option {
         padding: 16px;
     }
-    
+
     .option-icon {
         width: 50px;
         height: 50px;
@@ -1886,19 +1953,19 @@ body {
         padding: 40px 24px;
         margin: 20px;
     }
-    
+
     .loading-logo {
         font-size: 40px;
     }
-    
+
     .loading-content h2 {
         font-size: 28px;
     }
-    
+
     .loading-content p {
         font-size: 16px;
     }
-    
+
     .spinner-container {
         width: 60px;
         height: 60px;
@@ -1908,12 +1975,12 @@ body {
         padding: 16px;
         height: 100px;
     }
-    
+
     .banner-edit-btn {
         font-size: 13px;
         padding: 8px 16px;
     }
-    
+
     .banner-edit-btn i {
         font-size: 14px;
     }
@@ -1921,7 +1988,7 @@ body {
     .stat-card {
         background: rgba(255, 255, 255, 0.12);
     }
-    
+
     .card {
         background: rgba(255, 255, 255, 0.12);
     }
@@ -1968,7 +2035,7 @@ body {
     .banner-edit-btn span {
         display: none;
     }
-    
+
     .banner-edit-btn {
         width: 40px;
         height: 40px;
@@ -1998,8 +2065,10 @@ body {
 }
 
 #dashboard-screen select option {
-    background: #1e293b; /* Dark background */
-    color: white; /* White text */
+    background: #1e293b;
+    /* Dark background */
+    color: white;
+    /* White text */
     padding: 10px;
     font-weight: 500;
 }
@@ -2065,7 +2134,131 @@ body {
     padding: 10px;
 }
 
-.mt-1 { margin-top: 8px; }
-.mt-2 { margin-top: 16px; }
-.mb-1 { margin-bottom: 8px; }
-.mb-2 { margin-bottom: 16px; }
+/* ============================================================================
+   Delete Button Styling
+   ============================================================================ */
+
+.btn-delete {
+    background: rgba(239, 68, 68, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-delete:active {
+    transform: translateY(0);
+}
+
+.btn-delete i {
+    font-size: 14px;
+}
+
+/* Center align actions column */
+.table td:last-child {
+    text-align: center;
+}
+
+/* Mobile responsive for delete button */
+@media (max-width: 768px) {
+    .btn-delete {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-width: 32px;
+    }
+
+    .btn-delete i {
+        font-size: 12px;
+    }
+}
+
+/* ============================================================================
+   Delete Button Styling
+   ============================================================================ */
+
+.btn-delete {
+    background: rgba(239, 68, 68, 0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    padding: 8px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 14px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 36px;
+}
+
+.btn-delete:hover {
+    background: rgba(239, 68, 68, 0.25);
+    border-color: rgba(239, 68, 68, 0.5);
+    color: #ef4444;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+}
+
+.btn-delete:active {
+    transform: translateY(0);
+}
+
+.btn-delete i {
+    font-size: 14px;
+}
+
+/* Center align actions column */
+.table td:last-child {
+    text-align: center;
+}
+
+/* Mobile responsive for delete button */
+@media (max-width: 768px) {
+    .btn-delete {
+        padding: 6px 10px;
+        font-size: 12px;
+        min-width: 32px;
+    }
+
+    .btn-delete i {
+        font-size: 12px;
+    }
+}
+
+/* ============================================================================
+   Margin Utility Classes
+   ============================================================================ */
+.mt-1 {
+    margin-top: 8px;
+}
+
+.mt-2 {
+    margin-top: 16px;
+}
+
+.mb-1 {
+    margin-bottom: 8px;
+}
+
+.mb-2 {
+    margin-bottom: 16px;
+}
