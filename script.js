@@ -956,14 +956,14 @@ async function loadWorkHistory() {
         const tbody = document.getElementById('history-tbody');
 
         if (data.records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="7" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td></tr>';
             return;
         }
 
         tbody.innerHTML = data.records.map(record => {
             const totalHours = (record.workHours || 0) + (record.otHours || 0);
             return `
-                <tr>
+                <tr data-date="${record.date}">
                     <td>${formatDate(record.date)}</td>
                     <td><span class="status-badge status-${record.status}">${getBanglaStatus(record.status)}</span></td>
                     <td>${record.workHours ? formatBanglaNumber(record.workHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
@@ -971,6 +971,11 @@ async function loadWorkHistory() {
                     <td>${totalHours > 0 ? formatBanglaNumber(totalHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
                     <td>${record.earned ? formatCurrency(record.earned) : '-'}</td>
                     <td>${record.deduction ? formatCurrency(record.deduction) : '-'}</td>
+                    <td>
+                        <button class="btn-delete" onclick="deleteAttendanceRecord('${record.date}')" title="মুছে ফেলুন">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
                 </tr>
             `;
         }).join('');
@@ -979,6 +984,37 @@ async function loadWorkHistory() {
         showToast('ইতিহাস লোড করতে ত্রুটি', 'error');
     }
 }
+async function deleteAttendanceRecord(date) {
+    // Confirm before deletion
+    const confirmMsg = `আপনি কি ${formatDate(date)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
+
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    try {
+        showToast('রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
+
+        await apiRequest('attendance/delete', {
+            method: 'POST',
+            body: { date: date }
+        });
+
+        showToast('রেকর্ড সফলভাবে মুছে ফেলা হয়েছে!', 'success');
+
+        // Reload data
+        await loadMonthlyStats();
+        await loadWorkHistory();
+        await loadAvailableMonths();
+        await populateMonthSelect();
+
+    } catch (error) {
+        showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
+    }
+}
+
+// Make the function globally accessible
+window.deleteAttendanceRecord = deleteAttendanceRecord;
 
 async function populateMonthSelect() {
     const select = document.getElementById('history-month-select');
