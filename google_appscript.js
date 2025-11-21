@@ -185,42 +185,43 @@ function getAvailableMonths() {
 // ============================================================================
 // Main doGet Handler
 // ============================================================================
+// ============================================================================
+// Main doGet Handler
+// ============================================================================
 function doGet(e) {
   const path = e.parameter.path || '';
   const auth = e.parameter.authorization || '';
 
   Logger.log('=== doGet Request ===');
   Logger.log('Path: ' + path);
-
-  // IMPORTANT: Add your deployed Netlify URL here
-  const allowedOrigins = [
-    'https://your-site.netlify.app',
-    'http://localhost:5500' // For local testing
-  ];
-
-  // Validate origin (if available)
-  const origin = e.parameter.origin || '';
-  if (origin && !allowedOrigins.some(allowed => origin.includes(allowed))) {
-    Logger.log('⚠️ Request from unauthorized origin: ' + origin);
-    // Don't block completely, just log for monitoring
-  }
+  Logger.log('Auth header present: ' + (auth ? 'Yes' : 'No'));
 
   try {
-    // Public endpoints
+    // ===== PUBLIC ENDPOINTS (No Authentication Required) =====
+    // These endpoints work WITHOUT a token
+
     if (path === 'health') {
+      Logger.log('✅ Health check - returning success');
       return jsonResponse({ ok: true, message: 'Server is running' });
     }
 
-    // Protected endpoints
+    // ===== PROTECTED ENDPOINTS (Authentication Required) =====
+    // All other endpoints need authentication
+
+    if (!auth) {
+      Logger.log('❌ No authorization header provided');
+      return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - টোকেন প্রয়োজন' }, 401);
+    }
+
     const user = validateToken(auth);
     if (!user) {
       Logger.log('❌ Token validation failed');
-      return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস' }, 401);
+      return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - অবৈধ টোকেন' }, 401);
     }
 
     Logger.log('✅ Token valid for user: ' + user.id);
 
-    // Route to handlers
+    // Route to protected handlers
     if (path === 'profile') {
       return handleGetProfile(user);
     } else if (path.startsWith('attendance/stats')) {
@@ -233,22 +234,22 @@ function doGet(e) {
       return handleGetAvailableMonths(user);
     }
 
-    return jsonResponse({ ok: false, error: 'Invalid endpoint' }, 404);
+    // If we get here, the endpoint doesn't exist
+    Logger.log('❌ Unknown endpoint: ' + path);
+    return jsonResponse({ ok: false, error: 'এন্ডপয়েন্ট খুঁজে পাওয়া যায়নি' }, 404);
 
   } catch (error) {
     Logger.log('❌ Error in doGet: ' + error.toString());
     Logger.log(error.stack);
 
-    // User-friendly error message
-    // User-friendly error message
-const userMessage = error.message.includes('সমস্ত') ||
-                   error.message.includes('অবৈধ') ||
-                   error.message.includes('ইনপুট')
-    ? error.message
-    : 'সার্ভার ত্রুটি। পরে আবার চেষ্টা করুন।';
+    const userMessage = error.message.includes('সমস্ত') ||
+                       error.message.includes('অবৈধ') ||
+                       error.message.includes('ইনপুট')
+        ? error.message
+        : 'সার্ভার ত্রুটি। পরে আবার চেষ্টা করুন।';
 
     return jsonResponse({ ok: false, error: userMessage }, 500);
-}
+  }
 }
 
 // ============================================================================
@@ -260,25 +261,37 @@ function doPost(e) {
 
   Logger.log('=== doPost Request ===');
   Logger.log('Path: ' + path);
+  Logger.log('Auth header present: ' + (auth ? 'Yes' : 'No'));
 
   try {
-    // Public endpoints
+    // ===== PUBLIC ENDPOINTS (No Authentication Required) =====
+
     if (path === 'register') {
+      Logger.log('📝 Processing registration');
       return handleRegister(e.parameter);
-    } else if (path === 'login') {
+    }
+
+    if (path === 'login') {
+      Logger.log('🔐 Processing login');
       return handleLogin(e.parameter);
     }
 
-    // Protected endpoints
+    // ===== PROTECTED ENDPOINTS (Authentication Required) =====
+
+    if (!auth) {
+      Logger.log('❌ No authorization header provided');
+      return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - টোকেন প্রয়োজন' }, 401);
+    }
+
     const user = validateToken(auth);
     if (!user) {
       Logger.log('❌ Token validation failed');
-      return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস' }, 401);
+      return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - অবৈধ টোকেন' }, 401);
     }
 
     Logger.log('✅ Token valid for user: ' + user.id);
 
-    // Route to handlers
+    // Route to protected handlers
     if (path === 'logout') {
       return handleLogout(user, auth);
     } else if (path === 'profile/setup') {
@@ -291,15 +304,36 @@ function doPost(e) {
       return handleOffday(user, e.parameter);
     } else if (path === 'attendance/leave') {
       return handleLeave(user, e.parameter);
+    } else if (path === 'attendance/delete') {
+    return handleDeleteAttendance(user, e.parameter);
     }
 
-    return jsonResponse({ ok: false, error: 'Invalid endpoint' }, 404);
+    // If we get here, the endpoint doesn't exist
+    Logger.log('❌ Unknown endpoint: ' + path);
+    return jsonResponse({ ok: false, error: 'এন্ডপয়েন্ট খুঁজে পাওয়া যায়নি' }, 404);
 
   } catch (error) {
     Logger.log('❌ Error in doPost: ' + error.toString());
     Logger.log(error.stack);
-    return jsonResponse({ ok: false, error: error.toString() }, 500);
+
+    const userMessage = error.message.includes('সমস্ত') ||
+                       error.message.includes('অবৈধ') ||
+                       error.message.includes('ইনপুট')
+        ? error.message
+        : 'সার্ভার ত্রুটি। পরে আবার চেষ্টা করুন।';
+
+    return jsonResponse({ ok: false, error: userMessage }, 500);
   }
+}
+
+// ============================================================================
+// OPTIONS Handler for CORS Preflight
+// ============================================================================
+
+function doOptions(e) {
+  // Handle CORS preflight requests
+  return ContentService.createTextOutput('')
+    .setMimeType(ContentService.MimeType.TEXT);
 }
 
 // ============================================================================
@@ -665,7 +699,53 @@ function handleLeave(user, params) {
 
   return jsonResponse({ ok: true, message: 'ছুটি রেকর্ড হয়েছে' });
 }
+function handleDeleteAttendance(user, params) {
+  const { date } = params;
 
+  Logger.log('🗑️ Deleting attendance record for ' + user.id + ' on ' + date);
+
+  if (!date) {
+    return jsonResponse({ ok: false, error: 'তারিখ প্রয়োজন' });
+  }
+
+  try {
+    // Get the month from the date
+    const month = getMonthFromDate(date);
+    const ss = SpreadsheetApp.getActiveSpreadsheet();
+    const sheetName = getAttendanceSheetName(month);
+    const attendanceSheet = ss.getSheetByName(sheetName);
+
+    if (!attendanceSheet) {
+      return jsonResponse({ ok: false, error: 'এই মাসের কোন রেকর্ড নেই' });
+    }
+
+    const data = attendanceSheet.getDataRange().getValues();
+    let rowToDelete = -1;
+
+    // Find the record to delete
+    for (let i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim() === String(user.id).trim() &&
+          String(data[i][1]) === String(date)) {
+        rowToDelete = i + 1; // +1 because sheet rows are 1-indexed
+        break;
+      }
+    }
+
+    if (rowToDelete === -1) {
+      return jsonResponse({ ok: false, error: 'রেকর্ড খুঁজে পাওয়া যায়নি' });
+    }
+
+    // Delete the row
+    attendanceSheet.deleteRow(rowToDelete);
+    Logger.log('✅ Record deleted successfully');
+
+    return jsonResponse({ ok: true, message: 'রেকর্ড সফলভাবে মুছে ফেলা হয়েছে' });
+
+  } catch (error) {
+    Logger.log('❌ Delete error: ' + error.toString());
+    return jsonResponse({ ok: false, error: 'রেকর্ড মুছতে সমস্যা হয়েছে' });
+  }
+}
 // ============================================================================
 // Stats & History Handlers
 // ============================================================================
@@ -903,13 +983,8 @@ function jsonResponse(data, status = 200) {
   const output = ContentService.createTextOutput(JSON.stringify(data));
   output.setMimeType(ContentService.MimeType.JSON);
 
-  // Add CORS headers
-  if (typeof HtmlService !== 'undefined') {
-    // Only works in web app context
-    output.setHeader('Access-Control-Allow-Origin', '*');
-    output.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-    output.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-  }
+  // Note: CORS headers are automatically handled by Google Apps Script web apps
+  // No need to manually set headers - they're added automatically
 
   return output;
 }
