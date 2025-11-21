@@ -517,13 +517,16 @@ async function handleRegister(event) {
         });
 
         saveToken(data.token);
-
         showToast('নিবন্ধন সফল!', 'success');
         document.getElementById('register-form').reset();
 
-        await loadProfile();
+        // Load profile
+        await loadProfile(true);
 
         cleanupLoading();
+
+        // Always go to profile setup after registration
+        console.log('Registration complete, going to profile setup');
         goToProfileSetup();
     } catch (error) {
         switchScreen('auth-screen');
@@ -557,20 +560,26 @@ async function handleLogin(event) {
         });
 
         saveToken(data.token);
-
         showToast('লগইন সফল!', 'success');
         document.getElementById('login-form').reset();
 
-        await loadProfile();
+        // Load profile and wait for it
+        await loadProfile(true);
 
         showEnhancedLoading('প্রোফাইল পরীক্ষা করা হচ্ছে...');
 
-        if (!currentUser.profile.profileComplete) {
-            cleanupLoading();
-            goToProfileSetup();
-        } else {
-            cleanupLoading();
+        // Add small delay to ensure profile data is processed
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        cleanupLoading();
+
+        // Navigate based on profile completion status
+        if (currentUser.profile && currentUser.profile.profileComplete) {
+            console.log('Profile is complete, going to dashboard');
             goToDashboard();
+        } else {
+            console.log('Profile is incomplete, going to setup');
+            goToProfileSetup();
         }
     } catch (error) {
         switchScreen('auth-screen');
@@ -646,8 +655,15 @@ async function loadProfile(force = false) {
 
     const data = await apiRequest('profile');
     currentUser.profile = cleanProfileData(data.profile);
+
+    // Ensure profileComplete flag is set correctly
+    if (!currentUser.profile.profileComplete) {
+        currentUser.profile.profileComplete = false;
+    }
+
     setCache('profile', currentUser.profile);
     console.log('Profile loaded from server:', currentUser.profile);
+    console.log('Profile complete status:', currentUser.profile.profileComplete);
 }
 
 function goToProfileSetup() {
@@ -655,7 +671,14 @@ function goToProfileSetup() {
 }
 
 async function goToDashboard() {
-    if (!currentUser.profile || !currentUser.profile.profileComplete) {
+    // Check if profile exists and is complete
+    if (!currentUser.profile) {
+        showToast('প্রোফাইল লোড করা যায়নি', 'error');
+        goToProfileSetup();
+        return;
+    }
+
+    if (!currentUser.profile.profileComplete) {
         showToast('দয়া করে প্রথমে আপনার প্রোফাইল সম্পূর্ণ করুন', 'warning');
         goToProfileSetup();
         return;
@@ -715,12 +738,25 @@ async function handleProfileSetup(event) {
             }
         });
 
-        showToast('প্রোফাইল সেটআপ সম্পূর্ণ!', 'success');
-        await loadProfile();
+        // Force reload profile and wait for it to complete
+        await loadProfile(true);
+
+        // Ensure profile is marked as complete
+        if (currentUser.profile) {
+            currentUser.profile.profileComplete = true;
+        }
 
         cleanupLoading();
+
+        // Show success message AFTER navigation
+        showToast('প্রোফাইল সেটআপ সম্পূর্ণ!', 'success');
+
+        // Small delay to ensure smooth transition
+        await new Promise(resolve => setTimeout(resolve, 500));
+
         goToDashboard();
     } catch (error) {
+        switchScreen('profile-setup-screen');
         showToast(error.message, 'error');
     }
 }
