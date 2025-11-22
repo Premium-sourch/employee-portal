@@ -384,6 +384,12 @@ function getCurrentMonth() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
+function getMonthFromDate(dateStr) {
+    if (!dateStr) return getCurrentMonth();
+    const parts = dateStr.split('-');
+    return `${parts[0]}-${parts[1]}`;
+}
+
 function updateCurrentDate() {
     const now = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
