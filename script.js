@@ -1103,68 +1103,84 @@ function optimisticDeleteRecord(date) {
 }
 
 async function deleteAttendanceRecord(date) {
-    // Clean and format date to YYYY-MM-DD
-    let formattedDate = date;
-
-    // Remove any time component or extra spaces
-    formattedDate = String(formattedDate).trim().split('T')[0].split(' ')[0];
-
-    // If date contains slashes or dots, convert to YYYY-MM-DD
+    // ✅ STEP 1: Clean and format date to YYYY-MM-DD
+    let formattedDate = String(date).trim();
+    
+    // Remove time component
+    if (formattedDate.includes('T')) {
+        formattedDate = formattedDate.split('T')[0];
+    }
+    if (formattedDate.includes(' ')) {
+        formattedDate = formattedDate.split(' ')[0];
+    }
+    
+    // Convert DD/MM/YYYY or DD.MM.YYYY to YYYY-MM-DD if needed
     if (formattedDate.includes('/') || formattedDate.includes('.')) {
         const parts = formattedDate.split(/[\/\.]/);
         if (parts.length === 3) {
+            // Assume DD/MM/YYYY format
             formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
     }
+    
+    console.log('🗑️ Delete - Formatted date:', formattedDate);
+    
+    // ✅ STEP 2: Validate format
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
+        showToast('তারিখ ফরম্যাট সমস্যা', 'error');
+        console.error('Invalid date format:', formattedDate);
+        return;
+    }
 
-    console.log('📅 Cleaned date for deletion:', formattedDate);
-
-    // Confirm before deletion
+    // ✅ STEP 3: Confirm deletion
     const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
-
     if (!confirm(confirmMsg)) {
         return;
     }
 
     try {
-        console.log('🗑️ Deleting record for date:', formattedDate);
+        console.log('🗑️ Sending delete request for date:', formattedDate);
 
-        // ✨ OPTIMISTIC UPDATE - Remove from UI immediately
+        // ✅ STEP 4: Optimistic UI update (remove from display immediately)
         optimisticDeleteRecord(formattedDate);
         showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
 
-        // Send delete request to server in background
-        const requestPromise = apiRequest('attendance/delete', {
+        // ✅ STEP 5: Send delete request to backend
+        const response = await apiRequest('attendance/delete', {
             method: 'POST',
             body: { date: formattedDate }
         });
 
-        // Show success immediately
-        setTimeout(() => {
-            showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
-        }, 400);
+        console.log('✅ Delete response:', response);
 
-        // Wait for server response
-        await requestPromise;
+        // Show success
+        showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
 
-        // Refresh data silently in background
-        Promise.all([
-            loadMonthlyStats(),
-            loadWorkHistory(),
-            loadAvailableMonths(),
-            populateMonthSelect()
-        ]).catch(err => {
-            console.error('Background refresh error:', err);
-            showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
-        });
+        // ✅ STEP 6: Refresh data in background
+        setTimeout(async () => {
+            try {
+                await Promise.all([
+                    loadMonthlyStats(),
+                    loadWorkHistory(),
+                    loadAvailableMonths(),
+                    populateMonthSelect()
+                ]);
+                console.log('✅ Data refreshed after delete');
+            } catch (err) {
+                console.error('Background refresh error:', err);
+                showToast('📄 পেজ রিলোড করুন', 'warning');
+            }
+        }, 500);
 
     } catch (error) {
-        console.error('Delete error:', error);
+        console.error('❌ Delete error:', error);
         showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
 
-        // Reload to show correct data if delete failed
-        await loadMonthlyStats();
-        await loadWorkHistory();
+        // Reload to show correct data
+        await Promise.all([
+            loadMonthlyStats(),
+            loadWorkHistory()
+        ]);
     }
 }
 // Make the function globally accessible
