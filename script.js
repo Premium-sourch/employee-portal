@@ -50,8 +50,8 @@ const STORAGE_KEYS = {
 // Rate limiting
 const API_RATE_LIMIT = {
     calls: 0,
-    resetTime: Date.now() + 60000,
-    maxCalls: 60 // Increased from 30 to 60
+    resetTime: Date.now() + 60000, // Reset every minute
+    maxCalls: 30 // Max 30 calls per minute
 };
 
 function checkRateLimit() {
@@ -82,9 +82,7 @@ const cache = {
     profile: null,
     profileExpiry: null,
     stats: {},
-    statsExpiry: null,
-    history: {},
-    CACHE_DURATION: 10 * 60 * 1000 // Increased to 10 minutes
+    CACHE_DURATION: 5 * 60 * 1000 // 5 minutes
 };
 
 function isCacheValid(key) {
@@ -384,12 +382,6 @@ function getCurrentMonth() {
     return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
 }
 
-function getMonthFromDate(dateStr) {
-    if (!dateStr) return getCurrentMonth();
-    const parts = dateStr.split('-');
-    return `${parts[0]}-${parts[1]}`;
-}
-
 function updateCurrentDate() {
     const now = new Date();
     const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
@@ -473,7 +465,7 @@ function showEnhancedLoading(message = 'আপনার ড্যাশবোর
     return () => clearInterval(tipInterval);
 }
 // Failsafe for loading screen
-function showEnhancedLoadingWithTimeout(message, timeout = 15000) { // Increased to 15 seconds
+function showEnhancedLoadingWithTimeout(message, timeout = 10000) {
     const cleanup = showEnhancedLoading(message);
 
     // Auto-hide after timeout
@@ -775,31 +767,26 @@ async function handleProfileSetup(event) {
 
 async function loadDashboardData() {
     try {
-        // Show loading message
-        const loadingEl = document.querySelector('.loading-content p');
-        if (loadingEl) loadingEl.textContent = 'প্রোফাইল লোড হচ্ছে...';
-
         // Update UI with cached profile data immediately
         updateSidebarUser();
         updateProfileDisplay();
         updateAllAvatars();
         updateProfileView();
 
-        if (loadingEl) loadingEl.textContent = 'ডেটা সংগ্রহ করা হচ্ছে...';
+        // Load data in parallel for better performance
+        const [months] = await Promise.all([
+            loadAvailableMonths(),
+            // Add more parallel requests here if needed
+        ]);
 
-        // Load available months first (lightweight)
-        await loadAvailableMonths();
+        // Then load dependent data
         await populateMonthSelect();
 
-        if (loadingEl) loadingEl.textContent = 'পরিসংখ্যান লোড হচ্ছে...';
-
-        // Load stats and history together
+        // Load stats and history in parallel
         await Promise.all([
             loadMonthlyStats(),
             loadWorkHistory()
         ]);
-
-        if (loadingEl) loadingEl.textContent = 'প্রায় সম্পূর্ণ...';
 
     } catch (error) {
         console.error('Dashboard load error:', error);
@@ -931,125 +918,75 @@ function updateProfileView() {
 }
 
 async function loadMonthlyStats() {
-    showInlineLoading('stat-total-salary');
-    const selectedMonth = document.getElementById('history-month-select').value || getCurrentMonth();
-    const cacheKey = `stats_${selectedMonth}`;
-
     try {
-        // Check cache first
-        if (isCacheValid(cacheKey)) {
-            const cachedStats = getCached(cacheKey);
-            updateStatsUI(cachedStats);
-            return;
-        }
-
+        const selectedMonth = document.getElementById('history-month-select').value || getCurrentMonth();
         const data = await apiRequest(`attendance/stats?month=${selectedMonth}`);
         const stats = data.stats;
 
-        // Cache the stats
-        setCache(cacheKey, stats);
+        const grossSalary = (currentUser.profile.basicSalary || 0) +
+                           (currentUser.profile.houseRent || 0) +
+                           (currentUser.profile.medicalTransport || 0);
 
-        updateStatsUI(stats);
+        const bonus = stats.absentDays > 0 ? 0 : (currentUser.profile.presentBonus || 0);
+        const netAfterDeduction = grossSalary - stats.totalDeduction;
+        const totalSalary = netAfterDeduction + bonus;
+
+        let salaryDisplay;
+        if (stats.absentDays > 0) {
+            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
+        } else {
+            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(bonus)} = ${formatCurrency(totalSalary)}`;
+        }
+
+        document.getElementById('stat-total-salary').textContent = salaryDisplay;
+        document.getElementById('stat-total-ot').textContent = formatBanglaNumber(stats.totalOTHours.toFixed(1)) + 'ঘন্টা';
+        document.getElementById('stat-ot-amount').textContent = formatCurrency(stats.totalOTAmount);
+        document.getElementById('stat-present').textContent = formatBanglaNumber(stats.presentDays);
+        document.getElementById('stat-absent').textContent = formatBanglaNumber(stats.absentDays);
+        document.getElementById('stat-deduction').textContent = formatCurrency(stats.totalDeduction);
     } catch (error) {
         console.error('Stats load error:', error);
     }
 }
 
-function updateStatsUI(stats) {
-    const grossSalary = (currentUser.profile.basicSalary || 0) +
-                       (currentUser.profile.houseRent || 0) +
-                       (currentUser.profile.medicalTransport || 0);
-
-    const bonus = stats.absentDays > 0 ? 0 : (currentUser.profile.presentBonus || 0);
-    const netAfterDeduction = grossSalary - stats.totalDeduction;
-    const totalSalary = netAfterDeduction + bonus;
-
-    let salaryDisplay;
-    if (stats.absentDays > 0) {
-        salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
-    } else {
-        salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(bonus)} = ${formatCurrency(totalSalary)}`;
-    }
-
-    document.getElementById('stat-total-salary').textContent = salaryDisplay;
-    document.getElementById('stat-total-ot').textContent = formatBanglaNumber(stats.totalOTHours.toFixed(1)) + 'ঘন্টা';
-    document.getElementById('stat-ot-amount').textContent = formatCurrency(stats.totalOTAmount);
-    document.getElementById('stat-present').textContent = formatBanglaNumber(stats.presentDays);
-    document.getElementById('stat-absent').textContent = formatBanglaNumber(stats.absentDays);
-    document.getElementById('stat-deduction').textContent = formatCurrency(stats.totalDeduction);
-}
-
 async function loadWorkHistory() {
     const month = document.getElementById('history-month-select').value || getCurrentMonth();
-    const cacheKey = `history_${month}`;
-
     try {
-        // Check cache first
-        if (isCacheValid(cacheKey)) {
-            const cachedRecords = getCached(cacheKey);
-            renderHistoryTable(cachedRecords);
+        const data = await apiRequest(`attendance/history?month=${month}`);
+        const tbody = document.getElementById('history-tbody');
+
+        if (data.records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="8" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td></tr>';
             return;
         }
 
-        const data = await apiRequest(`attendance/history?month=${month}`);
-        const records = data.records;
-
-        // Cache the records
-        setCache(cacheKey, records);
-
-        renderHistoryTable(records);
+        tbody.innerHTML = data.records.map(record => {
+            const totalHours = (record.workHours || 0) + (record.otHours || 0);
+            return `
+                <tr data-date="${record.date}">
+                    <td>${formatDate(record.date)}</td>
+                    <td><span class="status-badge status-${record.status}">${getBanglaStatus(record.status)}</span></td>
+                    <td>${record.workHours ? formatBanglaNumber(record.workHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
+                    <td>${record.otHours ? formatBanglaNumber(record.otHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
+                    <td>${totalHours > 0 ? formatBanglaNumber(totalHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
+                    <td>${record.earned ? formatCurrency(record.earned) : '-'}</td>
+                    <td>${record.deduction ? formatCurrency(record.deduction) : '-'}</td>
+                    <td>
+                        <button class="btn-delete" onclick="deleteAttendanceRecord('${record.date}')" title="মুছে ফেলুন">
+                            <i class="fas fa-trash-alt"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
     } catch (error) {
         console.error('History load error:', error);
         showToast('ইতিহাস লোড করতে ত্রুটি', 'error');
     }
 }
-
-function renderHistoryTable(records) {
-    const tbody = document.getElementById('history-tbody');
-
-    if (records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td></tr>';
-        return;
-    }
-
-    tbody.innerHTML = records.map(record => {
-        const totalHours = (record.workHours || 0) + (record.otHours || 0);
-        return `
-            <tr data-date="${record.date}">
-                <td>${formatDate(record.date)}</td>
-                <td><span class="status-badge status-${record.status}">${getBanglaStatus(record.status)}</span></td>
-                <td>${record.workHours ? formatBanglaNumber(record.workHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
-                <td>${record.otHours ? formatBanglaNumber(record.otHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
-                <td>${totalHours > 0 ? formatBanglaNumber(totalHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
-                <td>${record.earned ? formatCurrency(record.earned) : '-'}</td>
-                <td>${record.deduction ? formatCurrency(record.deduction) : '-'}</td>
-                <td>
-                    <button class="btn-delete" onclick="deleteAttendanceRecord('${record.date}')" title="মুছে ফেলুন">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
 async function deleteAttendanceRecord(date) {
-    // Format the date properly (ensure it's YYYY-MM-DD)
-    let formattedDate = date;
-    
-    // If date is a Date object or needs formatting
-    if (date instanceof Date) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        formattedDate = `${year}-${month}-${day}`;
-    } else {
-        // Ensure it's in YYYY-MM-DD format
-        formattedDate = String(date).trim();
-    }
-
     // Confirm before deletion
-    const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
+    const confirmMsg = `আপনি কি ${formatDate(date)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
 
     if (!confirm(confirmMsg)) {
         return;
@@ -1058,14 +995,10 @@ async function deleteAttendanceRecord(date) {
     try {
         showToast('রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
 
-        console.log('Deleting record for date:', formattedDate);
-
-        const response = await apiRequest('attendance/delete', {
+        await apiRequest('attendance/delete', {
             method: 'POST',
-            body: { date: formattedDate }
+            body: { date: date }
         });
-
-        console.log('Delete response:', response);
 
         showToast('রেকর্ড সফলভাবে মুছে ফেলা হয়েছে!', 'success');
 
@@ -1076,22 +1009,10 @@ async function deleteAttendanceRecord(date) {
         await populateMonthSelect();
 
     } catch (error) {
-        console.error('Delete error:', error);
         showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
     }
 }
 
-// Make the function globally accessible
-window.deleteAttendanceRecord = deleteAttendanceRecord;
-
-function showInlineLoading(elementId, show = true) {
-    const element = document.getElementById(elementId);
-    if (!element) return;
-    
-    if (show) {
-        element.innerHTML = '<i class="fas fa-spinner fa-spin"></i> লোড হচ্ছে...';
-    }
-}
 // Make the function globally accessible
 window.deleteAttendanceRecord = deleteAttendanceRecord;
 
@@ -1285,15 +1206,6 @@ async function handlePresentSubmit(event) {
         showToast('উপস্থিতি সফলভাবে রেকর্ড করা হয়েছে!', 'success');
         closeModal();
 
-        // ✅ CLEAR CACHE - Add this section
-        const month = getMonthFromDate(date);
-        const statsKey = `stats_${month}`;
-        const historyKey = `history_${month}`;
-        delete cache.stats[statsKey];
-        delete cache.stats[historyKey];
-        console.log('Cache cleared for month:', month);
-        // ✅ END OF CACHE CLEARING
-
         await loadMonthlyStats();
         await loadWorkHistory();
 
@@ -1330,15 +1242,6 @@ async function handleAbsentSubmit(event) {
         showToast('অনুপস্থিতি রেকর্ড করা হয়েছে!', 'warning');
         closeModal();
 
-        // ✅ CLEAR CACHE - Add this section
-        const month = getMonthFromDate(date);
-        const statsKey = `stats_${month}`;
-        const historyKey = `history_${month}`;
-        delete cache.stats[statsKey];
-        delete cache.stats[historyKey];
-        console.log('Cache cleared for month:', month);
-        // ✅ END OF CACHE CLEARING
-
         await loadMonthlyStats();
         await loadWorkHistory();
 
@@ -1374,15 +1277,6 @@ async function handleOffdaySubmit(event) {
         showToast('ছুটি রেকর্ড করা হয়েছে!', 'success');
         closeModal();
 
-        // ✅ CLEAR CACHE - Add this section
-        const month = getMonthFromDate(date);
-        const statsKey = `stats_${month}`;
-        const historyKey = `history_${month}`;
-        delete cache.stats[statsKey];
-        delete cache.stats[historyKey];
-        console.log('Cache cleared for month:', month);
-        // ✅ END OF CACHE CLEARING
-
         await loadMonthlyStats();
         await loadWorkHistory();
 
@@ -1417,15 +1311,6 @@ async function handleLeaveSubmit(event) {
 
         showToast('ছুটি রেকর্ড করা হয়েছে!', 'success');
         closeModal();
-
-        // ✅ CLEAR CACHE - Add this section
-        const month = getMonthFromDate(date);
-        const statsKey = `stats_${month}`;
-        const historyKey = `history_${month}`;
-        delete cache.stats[statsKey];
-        delete cache.stats[historyKey];
-        console.log('Cache cleared for month:', month);
-        // ✅ END OF CACHE CLEARING
 
         await loadMonthlyStats();
         await loadWorkHistory();
