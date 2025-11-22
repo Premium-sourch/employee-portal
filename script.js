@@ -962,9 +962,19 @@ async function loadWorkHistory() {
 
         tbody.innerHTML = data.records.map(record => {
             const totalHours = (record.workHours || 0) + (record.otHours || 0);
+            
+            // Ensure date is in YYYY-MM-DD format
+            let recordDate = record.date;
+            if (recordDate instanceof Date) {
+                recordDate = recordDate.toISOString().split('T')[0];
+            } else if (typeof recordDate === 'string') {
+                // Clean the date string
+                recordDate = recordDate.split('T')[0].split(' ')[0].trim();
+            }
+            
             return `
-                <tr data-date="${record.date}">
-                    <td>${formatDate(record.date)}</td>
+                <tr data-date="${recordDate}">
+                    <td>${formatDate(recordDate)}</td>
                     <td><span class="status-badge status-${record.status}">${getBanglaStatus(record.status)}</span></td>
                     <td>${record.workHours ? formatBanglaNumber(record.workHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
                     <td>${record.otHours ? formatBanglaNumber(record.otHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
@@ -972,7 +982,7 @@ async function loadWorkHistory() {
                     <td>${record.earned ? formatCurrency(record.earned) : '-'}</td>
                     <td>${record.deduction ? formatCurrency(record.deduction) : '-'}</td>
                     <td>
-                        <button class="btn-delete" onclick="deleteAttendanceRecord('${record.date}')" title="মুছে ফেলুন">
+                        <button class="btn-delete" onclick="deleteAttendanceRecord('${recordDate}')" title="মুছে ফেলুন">
                             <i class="fas fa-trash-alt"></i>
                         </button>
                     </td>
@@ -985,19 +995,30 @@ async function loadWorkHistory() {
     }
 }
 async function deleteAttendanceRecord(date) {
+    // Format date to YYYY-MM-DD to ensure consistency
+    let formattedDate = date;
+    if (date.includes('/') || date.includes('.')) {
+        // If date is in different format, convert it
+        const parts = date.split(/[\/\.]/);
+        if (parts.length === 3) {
+            formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+    }
+
     // Confirm before deletion
-    const confirmMsg = `আপনি কি ${formatDate(date)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
+    const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
 
     if (!confirm(confirmMsg)) {
         return;
     }
 
     try {
+        console.log('🗑️ Deleting record for date:', formattedDate);
         showToast('রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
 
         await apiRequest('attendance/delete', {
             method: 'POST',
-            body: { date: date }
+            body: { date: formattedDate }
         });
 
         showToast('রেকর্ড সফলভাবে মুছে ফেলা হয়েছে!', 'success');
@@ -1009,6 +1030,7 @@ async function deleteAttendanceRecord(date) {
         await populateMonthSelect();
 
     } catch (error) {
+        console.error('Delete error:', error);
         showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
     }
 }
