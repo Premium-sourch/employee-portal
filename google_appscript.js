@@ -724,14 +724,28 @@ function handleDeleteAttendance(user, params) {
 
     // Find the record to delete
     for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(user.id).trim() &&
-          String(data[i][1]) === String(date)) {
+      const rowUserId = String(data[i][0]).trim();
+      const rowDate = data[i][1];
+      
+      // Convert date to string for comparison
+      let rowDateStr;
+      if (rowDate instanceof Date) {
+        rowDateStr = Utilities.formatDate(rowDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      } else {
+        rowDateStr = String(rowDate);
+      }
+      
+      Logger.log('Comparing: ' + rowUserId + ' === ' + user.id + ' && ' + rowDateStr + ' === ' + date);
+      
+      if (rowUserId === String(user.id).trim() && rowDateStr === String(date)) {
         rowToDelete = i + 1; // +1 because sheet rows are 1-indexed
+        Logger.log('Found matching record at row: ' + rowToDelete);
         break;
       }
     }
 
     if (rowToDelete === -1) {
+      Logger.log('No matching record found');
       return jsonResponse({ ok: false, error: 'রেকর্ড খুঁজে পাওয়া যায়নি' });
     }
 
