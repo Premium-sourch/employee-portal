@@ -395,20 +395,20 @@ function formatDate(dateStr) {
         if (parts.length === 3) {
             // Create date using UTC to prevent timezone shifts
             const d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
-            return d.toLocaleDateString('bn-BD', { 
-                year: 'numeric', 
-                month: 'short', 
+            return d.toLocaleDateString('bn-BD', {
+                year: 'numeric',
+                month: 'short',
                 day: 'numeric',
                 timeZone: 'UTC' // Force UTC display
             });
         }
     }
-    
+
     // Fallback for Date objects
     const d = new Date(dateStr);
-    return d.toLocaleDateString('bn-BD', { 
-        year: 'numeric', 
-        month: 'short', 
+    return d.toLocaleDateString('bn-BD', {
+        year: 'numeric',
+        month: 'short',
         day: 'numeric',
         timeZone: 'UTC'
     });
@@ -960,7 +960,7 @@ async function loadMonthlyStats() {
 
         // Display format: Gross ± Deductions + Bonus = Total
         let salaryDisplay;
-        
+
         if (stats.absentDays > 0) {
             // Show: (Gross - Deduction) + Bonus = Total
             salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(totalPresentBonus)} = ${formatCurrency(totalSalary)}`;
@@ -996,7 +996,7 @@ async function loadWorkHistory() {
 
         tbody.innerHTML = data.records.map(record => {
             const totalHours = (record.workHours || 0) + (record.otHours || 0);
-            
+
             // Ensure date is in YYYY-MM-DD format - FIXED VERSION
             let recordDate = record.date;
             if (recordDate instanceof Date) {
@@ -1009,7 +1009,7 @@ async function loadWorkHistory() {
                 // Clean the date string and ensure YYYY-MM-DD format
                 recordDate = recordDate.split('T')[0].split(' ')[0].trim();
             }
-            
+
             return `
                 <tr data-date="${recordDate}">
                     <td>${formatDate(recordDate)}</td>
@@ -1043,7 +1043,7 @@ async function loadWorkHistory() {
  */
 function optimisticUpdateUI(action, data) {
     console.log('🚀 Optimistic update:', action, data);
-    
+
     switch(action) {
         case 'add':
             optimisticAddRecord(data);
@@ -1061,19 +1061,19 @@ function optimisticAddRecord(record) {
     // Update stats immediately
     const presentStat = document.getElementById('stat-present');
     const absentStat = document.getElementById('stat-absent');
-    
+
     if (record.status === 'present') {
-        const current = parseInt(presentStat.textContent.replace(/[০-৯,]/g, match => 
+        const current = parseInt(presentStat.textContent.replace(/[০-৯,]/g, match =>
             '০১২৩৪৫৬৭৮৯'.indexOf(match) !== -1 ? '০১২৩৪৫৬৭৮৯'.indexOf(match) : match
         )) || 0;
         presentStat.textContent = formatBanglaNumber(current + 1);
     } else if (record.status === 'absent') {
-        const current = parseInt(absentStat.textContent.replace(/[০-৯,]/g, match => 
+        const current = parseInt(absentStat.textContent.replace(/[০-৯,]/g, match =>
             '০১২৩৪৫৬৭৮৯'.indexOf(match) !== -1 ? '০১২৩৪৫৬৭৮৯'.indexOf(match) : match
         )) || 0;
         absentStat.textContent = formatBanglaNumber(current + 1);
     }
-    
+
     // Add visual feedback
     showToast('✨ রেকর্ড যুক্ত হচ্ছে...', 'info');
 }
@@ -1088,11 +1088,11 @@ function optimisticDeleteRecord(date) {
         row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
         row.style.opacity = '0';
         row.style.transform = 'translateX(-20px)';
-        
+
         // Remove after animation
         setTimeout(() => {
             row.remove();
-            
+
             // Check if table is empty
             const tbody = document.getElementById('history-tbody');
             if (tbody.children.length === 0) {
@@ -1105,10 +1105,10 @@ function optimisticDeleteRecord(date) {
 async function deleteAttendanceRecord(date) {
     // Clean and format date to YYYY-MM-DD
     let formattedDate = date;
-    
+
     // Remove any time component or extra spaces
     formattedDate = String(formattedDate).trim().split('T')[0].split(' ')[0];
-    
+
     // If date contains slashes or dots, convert to YYYY-MM-DD
     if (formattedDate.includes('/') || formattedDate.includes('.')) {
         const parts = formattedDate.split(/[\/\.]/);
@@ -1116,7 +1116,7 @@ async function deleteAttendanceRecord(date) {
             formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
     }
-    
+
     console.log('📅 Cleaned date for deletion:', formattedDate);
 
     // Confirm before deletion
@@ -1128,7 +1128,7 @@ async function deleteAttendanceRecord(date) {
 
     try {
         console.log('🗑️ Deleting record for date:', formattedDate);
-        
+
         // ✨ OPTIMISTIC UPDATE - Remove from UI immediately
         optimisticDeleteRecord(formattedDate);
         showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
@@ -1161,7 +1161,7 @@ async function deleteAttendanceRecord(date) {
     } catch (error) {
         console.error('Delete error:', error);
         showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
-        
+
         // Reload to show correct data if delete failed
         await loadMonthlyStats();
         await loadWorkHistory();
@@ -1346,8 +1346,8 @@ async function handlePresentSubmit(event) {
     try {
         // ✨ OPTIMISTIC UPDATE - Close modal and update UI immediately
         closeModal();
-        optimisticUpdateUI('add', { 
-            status: 'present', 
+        optimisticUpdateUI('add', {
+            status: 'present',
             date: date,
             otHours: otHours,
             isFriday: isFriday
@@ -1405,7 +1405,7 @@ async function handleAbsentSubmit(event) {
     try {
         showToast('অনুপস্থিতি রেকর্ড করা হচ্ছে...', 'info');
 
-        closeModal();  
+        closeModal();
         optimisticUpdateUI('absent', { date, reason });
 
         const promise = apiRequest('attendance/absent', {

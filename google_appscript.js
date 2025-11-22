@@ -198,7 +198,6 @@ function doGet(e) {
 
   try {
     // ===== PUBLIC ENDPOINTS (No Authentication Required) =====
-    // These endpoints work WITHOUT a token
 
     if (path === 'health') {
       Logger.log('✅ Health check - returning success');
@@ -206,7 +205,7 @@ function doGet(e) {
     }
 
     // ===== PROTECTED ENDPOINTS (Authentication Required) =====
-    // All other endpoints need authentication
+    // Only check auth AFTER public endpoints
 
     if (!auth) {
       Logger.log('❌ No authorization header provided');
@@ -234,7 +233,6 @@ function doGet(e) {
       return handleGetAvailableMonths(user);
     }
 
-    // If we get here, the endpoint doesn't exist
     Logger.log('❌ Unknown endpoint: ' + path);
     return jsonResponse({ ok: false, error: 'এন্ডপয়েন্ট খুঁজে পাওয়া যায়নি' }, 404);
 
@@ -268,15 +266,16 @@ function doPost(e) {
 
     if (path === 'register') {
       Logger.log('📝 Processing registration');
-      return handleRegister(e.parameter);
+      return handleRegister(e.parameter);  // ✅ RETURN here
     }
 
     if (path === 'login') {
       Logger.log('🔐 Processing login');
-      return handleLogin(e.parameter);
+      return handleLogin(e.parameter);  // ✅ RETURN here
     }
 
     // ===== PROTECTED ENDPOINTS (Authentication Required) =====
+    // Only check auth AFTER public endpoints
 
     if (!auth) {
       Logger.log('❌ No authorization header provided');
@@ -305,10 +304,9 @@ function doPost(e) {
     } else if (path === 'attendance/leave') {
       return handleLeave(user, e.parameter);
     } else if (path === 'attendance/delete') {
-    return handleDeleteAttendance(user, e.parameter);
+      return handleDeleteAttendance(user, e.parameter);
     }
 
-    // If we get here, the endpoint doesn't exist
     Logger.log('❌ Unknown endpoint: ' + path);
     return jsonResponse({ ok: false, error: 'এন্ডপয়েন্ট খুঁজে পাওয়া যায়নি' }, 404);
 
@@ -709,37 +707,70 @@ function handleDeleteAttendance(user, params) {
   }
 
   try {
-    // Get the month from the date
     const month = getMonthFromDate(date);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheetName = getAttendanceSheetName(month);
     const attendanceSheet = ss.getSheetByName(sheetName);
 
     if (!attendanceSheet) {
+      Logger.log('❌ Sheet not found: ' + sheetName);
       return jsonResponse({ ok: false, error: 'এই মাসের কোন রেকর্ড নেই' });
     }
 
     const data = attendanceSheet.getDataRange().getValues();
-    let rowToDelete = -1;
+    const rowsToDelete = []; // Collect ALL matching rows (handles duplicates)
 
-    // Find the record to delete
-    for (let i = 1; i < data.length; i++) {
-      if (String(data[i][0]).trim() === String(user.id).trim() &&
-          String(data[i][1]) === String(date)) {
-        rowToDelete = i + 1; // +1 because sheet rows are 1-indexed
-        break;
+      // Clean the target date for comparison
+      const cleanTargetDate = String(date).trim().split('T')[0].split(' ')[0];
+      Logger.log('🔍 Looking for record(s) with UserID: ' + user.id + ' and Date: ' + cleanTargetDate);
+
+      // Find ALL matching records (not just the first one)
+      for (let i = 1; i < data.length; i++) {
+        const rowUserId = String(data[i][0]).trim();
+        const rowDate = data[i][1];
+
+       let rowDateStr = '';
+        if (rowDate instanceof Date) {
+          // Use UTC to avoid timezone shifts
+          const year = rowDate.getUTCFullYear();
+          const month = String(rowDate.getUTCMonth() + 1).padStart(2, '0');
+          const day = String(rowDate.getUTCDate()).padStart(2, '0');
+          rowDateStr = `${year}-${month}-${day}`;
+        } else {
+          const cleanDate = String(rowDate).trim().split('T')[0].split(' ')[0];
+          rowDateStr = cleanDate;
+        }
+
+        Logger.log('  📅 Comparing: Row date "' + rowDateStr + '" with target "' + cleanTargetDate + '"');
+
+        // Match both user and date (case-insensitive for user)
+        if (rowUserId.toLowerCase() === String(user.id).trim().toLowerCase() &&
+            rowDateStr === cleanTargetDate) {
+          rowsToDelete.push(i + 1); // Sheet rows are 1-indexed
+          Logger.log('✅ Found matching record at row: ' + (i + 1));
+        }
       }
-    }
 
-    if (rowToDelete === -1) {
+    if (rowsToDelete.length === 0) {
+      Logger.log('❌ No matching record found');
       return jsonResponse({ ok: false, error: 'রেকর্ড খুঁজে পাওয়া যায়নি' });
     }
 
-    // Delete the row
-    attendanceSheet.deleteRow(rowToDelete);
-    Logger.log('✅ Record deleted successfully');
+    // Delete all matching rows (from bottom to top to avoid index shifting)
+    rowsToDelete.sort((a, b) => b - a); // Sort descending
 
-    return jsonResponse({ ok: true, message: 'রেকর্ড সফলভাবে মুছে ফেলা হয়েছে' });
+    Logger.log('🗑️ Deleting ' + rowsToDelete.length + ' record(s)');
+
+    rowsToDelete.forEach(rowNum => {
+      attendanceSheet.deleteRow(rowNum);
+      Logger.log('✅ Deleted row: ' + rowNum);
+    });
+
+    const message = rowsToDelete.length > 1
+      ? 'রেকর্ড সফলভাবে মুছে ফেলা হয়েছে (' + rowsToDelete.length + 'টি ডুপ্লিকেট)'
+      : 'রেকর্ড সফলভাবে মুছে ফেলা হয়েছে';
+
+    return jsonResponse({ ok: true, message: message });
 
   } catch (error) {
     Logger.log('❌ Delete error: ' + error.toString());
@@ -813,11 +844,34 @@ function saveAttendanceRecord(record) {
 
   const data = attendanceSheet.getDataRange().getValues();
 
-  // Check if record exists
+  // Convert input date to consistent format (YYYY-MM-DD) for comparison
+  const inputDateStr = String(record.date).trim().split('T')[0];
+
+  // Check if record exists - IMPROVED TIMEZONE HANDLING
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === String(record.userId).trim() &&
-        String(data[i][1]) === String(record.date)) {
-      // Update existing
+    const rowUserId = String(data[i][0]).trim();
+    const rowDate = data[i][1];
+
+    // Normalize date for comparison - handle both Date objects and strings
+    let rowDateStr = '';
+    if (rowDate instanceof Date) {
+      // Use UTC to avoid timezone shifts
+      const year = rowDate.getUTCFullYear();
+      const month = String(rowDate.getUTCMonth() + 1).padStart(2, '0');
+      const day = String(rowDate.getUTCDate()).padStart(2, '0');
+      rowDateStr = `${year}-${month}-${day}`;
+    } else {
+      const cleanDate = String(rowDate).trim().split('T')[0].split(' ')[0];
+      rowDateStr = cleanDate;
+    }
+
+    // If same user AND same date found, UPDATE instead of creating duplicate
+    if (rowUserId.toLowerCase() === String(record.userId).trim().toLowerCase() &&
+        rowDateStr === inputDateStr) {
+
+      Logger.log('⚠️ Record already exists for ' + inputDateStr + ', UPDATING instead of creating duplicate');
+
+      // Update the existing record
       attendanceSheet.getRange(i + 1, 3, 1, 8).setValues([[
         record.status,
         record.workHours,
@@ -828,15 +882,16 @@ function saveAttendanceRecord(record) {
         record.details,
         new Date()
       ]]);
-      Logger.log('✅ Record updated');
+      Logger.log('✅ Record UPDATED at row ' + (i + 1));
       return;
     }
   }
 
-  // Add new record
+  // Only reached if NO duplicate found - create new record
+  // Store date as STRING in YYYY-MM-DD format to avoid timezone conversion
   attendanceSheet.appendRow([
     record.userId,
-    record.date,
+    inputDateStr,
     record.status,
     record.workHours,
     record.otHours,
@@ -846,7 +901,7 @@ function saveAttendanceRecord(record) {
     record.details,
     new Date()
   ]);
-  Logger.log('✅ New record created');
+  Logger.log('✅ New record created for ' + inputDateStr);
 }
 
 function getAttendanceRecords(userId, month) {
@@ -868,8 +923,18 @@ function getAttendanceRecords(userId, month) {
 
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === String(userId).trim()) {
+      let dateValue = data[i][1];
+
+      // If it's a Date object, format it consistently
+      if (dateValue instanceof Date) {
+        dateValue = Utilities.formatDate(dateValue, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      } else {
+        // Ensure string is in clean format
+        dateValue = String(dateValue).trim().split('T')[0].split(' ')[0];
+      }
+
       records.push({
-        date: data[i][1],
+        date: dateValue, // Now always YYYY-MM-DD string
         status: data[i][2],
         workHours: Number(data[i][3]) || 0,
         otHours: Number(data[i][4]) || 0,
@@ -881,6 +946,7 @@ function getAttendanceRecords(userId, month) {
     }
   }
 
+  // Sort by date descending
   records.sort((a, b) => new Date(b.date) - new Date(a.date));
 
   return records;
@@ -987,4 +1053,108 @@ function jsonResponse(data, status = 200) {
   // No need to manually set headers - they're added automatically
 
   return output;
+}
+
+
+/**
+ * CLEANUP FUNCTION - Run this ONCE to remove existing duplicate records
+ * After running once, you can delete this function
+ */
+function cleanupDuplicateRecords() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+
+  let totalDuplicatesRemoved = 0;
+
+  Logger.log('🧹 Starting cleanup of duplicate records...');
+
+  // Process each attendance sheet
+  sheets.forEach(sheet => {
+    const sheetName = sheet.getName();
+
+    // Only process attendance sheets (skip Users, Profiles, Sessions)
+    if (!sheetName.startsWith('Attendance_')) {
+      return;
+    }
+
+    Logger.log('🔍 Checking sheet: ' + sheetName);
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length <= 1) {
+      Logger.log('  ℹ️ Sheet is empty or has only headers, skipping');
+      return;
+    }
+
+    // Track seen records: userId+date -> row index
+    const seenRecords = new Map();
+    const rowsToDelete = [];
+
+    // Scan all records (skip header row)
+    for (let i = 1; i < data.length; i++) {
+      const userId = String(data[i][0]).trim().toLowerCase();
+      const rawDate = data[i][1];
+
+      // Normalize date
+      let dateStr = '';
+      if (rawDate instanceof Date) {
+        dateStr = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+      } else {
+        dateStr = String(rawDate).trim().split(' ')[0];
+      }
+
+      const key = userId + '|' + dateStr;
+
+      if (seenRecords.has(key)) {
+        // Duplicate found! Mark for deletion
+        const status = data[i][2] || 'unknown';
+        Logger.log('  ⚠️ Duplicate: UserID=' + userId + ', Date=' + dateStr + ', Status=' + status + ' at row ' + (i + 1));
+        rowsToDelete.push(i + 1); // Sheet rows are 1-indexed
+      } else {
+        // First occurrence, remember it
+        seenRecords.set(key, i + 1);
+      }
+    }
+
+    // Delete duplicates (must delete from bottom to top to avoid index shifting)
+    if (rowsToDelete.length > 0) {
+      Logger.log('  🗑️ Deleting ' + rowsToDelete.length + ' duplicate(s) from ' + sheetName);
+
+      // Sort in descending order (delete from bottom up)
+      rowsToDelete.sort((a, b) => b - a);
+
+      rowsToDelete.forEach(rowNum => {
+        sheet.deleteRow(rowNum);
+        totalDuplicatesRemoved++;
+      });
+
+      Logger.log('  ✅ Cleaned up ' + sheetName);
+    } else {
+      Logger.log('  ✅ No duplicates found in ' + sheetName);
+    }
+  });
+
+  Logger.log('');
+  Logger.log('════════════════════════════════════════');
+  Logger.log('🎉 Cleanup Complete!');
+  Logger.log('📊 Total duplicates removed: ' + totalDuplicatesRemoved);
+  Logger.log('════════════════════════════════════════');
+
+  // Show result to user
+  if (totalDuplicatesRemoved > 0) {
+    SpreadsheetApp.getUi().alert(
+      '✅ Cleanup Successful!\n\n' +
+      'Removed ' + totalDuplicatesRemoved + ' duplicate record(s).\n\n' +
+      'Check the Execution log for details.'
+    );
+  } else {
+    SpreadsheetApp.getUi().alert(
+      '✅ No Duplicates Found!\n\n' +
+      'Your attendance records are clean.'
+    );
+  }
+
+  return {
+    success: true,
+    duplicatesRemoved: totalDuplicatesRemoved
+  };
 }

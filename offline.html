@@ -10,7 +10,7 @@
             padding: 0;
             box-sizing: border-box;
         }
-        
+
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -20,7 +20,7 @@
             justify-content: center;
             padding: 20px;
         }
-        
+
         .offline-container {
             background: white;
             border-radius: 20px;
@@ -29,31 +29,31 @@
             text-align: center;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
-        
+
         .offline-icon {
             font-size: 80px;
             margin-bottom: 24px;
             animation: float 3s ease-in-out infinite;
         }
-        
+
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
         }
-        
+
         h1 {
             font-size: 32px;
             color: #1e293b;
             margin-bottom: 16px;
         }
-        
+
         p {
             font-size: 18px;
             color: #64748b;
             margin-bottom: 32px;
             line-height: 1.6;
         }
-        
+
         .retry-btn {
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
@@ -65,12 +65,12 @@
             cursor: pointer;
             transition: transform 0.2s;
         }
-        
+
         .retry-btn:hover {
             transform: translateY(-2px);
             box-shadow: 0 8px 20px rgba(102, 126, 234, 0.4);
         }
-        
+
         .tips {
             margin-top: 40px;
             text-align: left;
@@ -78,25 +78,25 @@
             padding: 24px;
             border-radius: 12px;
         }
-        
+
         .tips h3 {
             font-size: 18px;
             color: #1e293b;
             margin-bottom: 12px;
         }
-        
+
         .tips ul {
             list-style: none;
             padding: 0;
         }
-        
+
         .tips li {
             color: #64748b;
             margin-bottom: 8px;
             padding-left: 24px;
             position: relative;
         }
-        
+
         .tips li:before {
             content: '•';
             position: absolute;
@@ -111,11 +111,11 @@
         <div class="offline-icon">📡</div>
         <h1>ইন্টারনেট সংযোগ নেই</h1>
         <p>আপনি বর্তমানে অফলাইন আছেন। দয়া করে আপনার ইন্টারনেট সংযোগ পরীক্ষা করুন এবং আবার চেষ্টা করুন।</p>
-        
+
         <button class="retry-btn" onclick="window.location.reload()">
             🔄 আবার চেষ্টা করুন
         </button>
-        
+
         <div class="tips">
             <h3>💡 পরামর্শ:</h3>
             <ul>
