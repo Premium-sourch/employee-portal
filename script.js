@@ -1345,6 +1345,8 @@ function updatePresentCalculation() {
 // Attendance Functions
 // ============================================================================
 
+// Replace the handlePresentSubmit function in your frontend code
+
 async function handlePresentSubmit(event) {
     event.preventDefault();
 
@@ -1356,12 +1358,25 @@ async function handlePresentSubmit(event) {
         return;
     }
 
-    const selectedDate = new Date(date);
+    const selectedDate = new Date(date + 'T00:00:00'); // Force local timezone
     const isFriday = selectedDate.getDay() === 5;
 
+    // ✅ Check if record already exists for this date
+    const existingRecord = checkIfRecordExists(date);
+    const isUpdate = existingRecord !== null;
+
     try {
-        // ✨ OPTIMISTIC UPDATE - Close modal and update UI immediately
+        // Close modal immediately for better UX
         closeModal();
+
+        // Show appropriate message
+        if (isUpdate) {
+            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
+        } else {
+            showToast('➕ নতুন রেকর্ড যুক্ত হচ্ছে...', 'info');
+        }
+
+        // Optimistic update
         optimisticUpdateUI('add', {
             status: 'present',
             date: date,
@@ -1369,7 +1384,7 @@ async function handlePresentSubmit(event) {
             isFriday: isFriday
         });
 
-        // Send to server in background
+        // Send to server
         const requestPromise = apiRequest('attendance/present', {
             method: 'POST',
             body: {
@@ -1381,26 +1396,214 @@ async function handlePresentSubmit(event) {
             }
         });
 
-        // Show success immediately
-        showToast('✅ উপস্থিতি রেকর্ড হয়েছে!', 'success');
+        // Show success message
+        if (isUpdate) {
+            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
+        } else {
+            showToast('✅ উপস্থিতি রেকর্ড হয়েছে!', 'success');
+        }
 
         // Wait for server response in background
         await requestPromise;
 
-        // Refresh data silently
-        Promise.all([
-            loadMonthlyStats(),
-            loadWorkHistory(),
-            loadAvailableMonths(),
-            populateMonthSelect()
-        ]).catch(err => {
-            console.error('Background refresh error:', err);
-            // If background refresh fails, show reload button
-            showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
-        });
+        // Refresh data silently (500ms delay to ensure backend processing complete)
+        setTimeout(() => {
+            Promise.all([
+                loadMonthlyStats(),
+                loadWorkHistory(),
+                loadAvailableMonths(),
+                populateMonthSelect()
+            ]).catch(err => {
+                console.error('Background refresh error:', err);
+                showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
+            });
+        }, 500);
 
     } catch (error) {
         // If server request fails, reload to show correct data
+        showToast(error.message, 'error');
+        await loadMonthlyStats();
+        await loadWorkHistory();
+    }
+}
+
+// Helper function to check if record exists for a date
+function checkIfRecordExists(date) {
+    const tbody = document.getElementById('history-tbody');
+    const rows = tbody.querySelectorAll('tr[data-date]');
+    
+    // Normalize the input date to YYYY-MM-DD
+    const searchDate = String(date).trim().split('T')[0].split(' ')[0];
+    
+    for (let row of rows) {
+        const rowDate = row.getAttribute('data-date');
+        if (rowDate === searchDate) {
+            return row; // Record exists
+        }
+    }
+    
+    return null; // No record found
+}
+
+// Also update handleAbsentSubmit, handleOffdaySubmit, and handleLeaveSubmit
+// with the same pattern (checking for existing records)
+
+async function handleAbsentSubmit(event) {
+    event.preventDefault();
+
+    const date = document.getElementById('absent-date').value;
+    const reason = sanitizeInput(document.getElementById('absent-reason').value);
+
+    if (!date) {
+        showToast('তারিখ নির্বাচন করুন', 'error');
+        return;
+    }
+
+    const isUpdate = checkIfRecordExists(date) !== null;
+
+    try {
+        closeModal();
+        
+        if (isUpdate) {
+            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
+        } else {
+            showToast('➕ অনুপস্থিতি রেকর্ড করা হচ্ছে...', 'info');
+        }
+
+        optimisticUpdateUI('add', { date, reason, status: 'absent' });
+
+        const promise = apiRequest('attendance/absent', {
+            method: 'POST',
+            body: {
+                date: date,
+                reason: reason || 'কোন কারণ দেওয়া হয়নি'
+            }
+        });
+
+        if (isUpdate) {
+            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
+        } else {
+            showToast('✅ অনুপস্থিতি রেকর্ড হয়েছে!', 'warning');
+        }
+
+        await promise;
+
+        setTimeout(() => {
+            Promise.all([
+                loadMonthlyStats(),
+                loadWorkHistory(),
+                loadAvailableMonths(),
+                populateMonthSelect()
+            ]);
+        }, 500);
+
+    } catch (error) {
+        showToast(error.message, 'error');
+        await loadMonthlyStats();
+        await loadWorkHistory();
+    }
+}
+
+async function handleOffdaySubmit(event) {
+    event.preventDefault();
+
+    const date = document.getElementById('offday-date').value;
+    const type = document.getElementById('offday-type').value;
+
+    if (!date) {
+        showToast('তারিখ নির্বাচন করুন', 'error');
+        return;
+    }
+
+    const isUpdate = checkIfRecordExists(date) !== null;
+
+    try {
+        closeModal();
+        
+        if (isUpdate) {
+            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
+        } else {
+            showToast('➕ ছুটি রেকর্ড করা হচ্ছে...', 'info');
+        }
+
+        optimisticUpdateUI('add', { date, type, status: 'offday' });
+
+        const promise = apiRequest('attendance/offday', {
+            method: 'POST',
+            body: { date, type }
+        });
+
+        if (isUpdate) {
+            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
+        } else {
+            showToast('✅ ছুটি রেকর্ড হয়েছে!', 'success');
+        }
+
+        await promise;
+
+        setTimeout(() => {
+            Promise.all([
+                loadMonthlyStats(),
+                loadWorkHistory(),
+                loadAvailableMonths(),
+                populateMonthSelect()
+            ]);
+        }, 500);
+
+    } catch (error) {
+        showToast(error.message, 'error');
+        await loadMonthlyStats();
+        await loadWorkHistory();
+    }
+}
+
+async function handleLeaveSubmit(event) {
+    event.preventDefault();
+
+    const date = document.getElementById('leave-date').value;
+    const type = document.getElementById('leave-type').value;
+
+    if (!date) {
+        showToast('তারিখ নির্বাচন করুন', 'error');
+        return;
+    }
+
+    const isUpdate = checkIfRecordExists(date) !== null;
+
+    try {
+        closeModal();
+        
+        if (isUpdate) {
+            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
+        } else {
+            showToast('➕ ছুটি রেকর্ড করা হচ্ছে...', 'info');
+        }
+
+        optimisticUpdateUI('add', { date, type, status: 'leave' });
+
+        const promise = apiRequest('attendance/leave', {
+            method: 'POST',
+            body: { date, type }
+        });
+
+        if (isUpdate) {
+            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
+        } else {
+            showToast('✅ ছুটি রেকর্ড হয়েছে!', 'success');
+        }
+
+        await promise;
+
+        setTimeout(() => {
+            Promise.all([
+                loadMonthlyStats(),
+                loadWorkHistory(),
+                loadAvailableMonths(),
+                populateMonthSelect()
+            ]);
+        }, 500);
+
+    } catch (error) {
         showToast(error.message, 'error');
         await loadMonthlyStats();
         await loadWorkHistory();
