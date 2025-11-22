@@ -1034,26 +1034,38 @@ function renderHistoryTable(records) {
 }
 
 async function deleteAttendanceRecord(date) {
+    // Format the date properly (ensure it's YYYY-MM-DD)
+    let formattedDate = date;
+    
+    // If date is a Date object or needs formatting
+    if (date instanceof Date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        formattedDate = `${year}-${month}-${day}`;
+    } else {
+        // Ensure it's in YYYY-MM-DD format
+        formattedDate = String(date).trim();
+    }
+
     // Confirm before deletion
-    const confirmMsg = `আপনি কি ${formatDate(date)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
+    const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
 
     if (!confirm(confirmMsg)) {
         return;
     }
 
     try {
-	const month = getMonthFromDate(date);
-        const statsKey = `stats_${month}`;
-        const historyKey = `history_${month}`;
-        delete cache.stats[statsKey];
-        delete cache.stats[historyKey];
-
         showToast('রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
 
-        await apiRequest('attendance/delete', {
+        console.log('Deleting record for date:', formattedDate);
+
+        const response = await apiRequest('attendance/delete', {
             method: 'POST',
-            body: { date: date }
+            body: { date: formattedDate }
         });
+
+        console.log('Delete response:', response);
 
         showToast('রেকর্ড সফলভাবে মুছে ফেলা হয়েছে!', 'success');
 
@@ -1064,9 +1076,14 @@ async function deleteAttendanceRecord(date) {
         await populateMonthSelect();
 
     } catch (error) {
+        console.error('Delete error:', error);
         showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
     }
 }
+
+// Make the function globally accessible
+window.deleteAttendanceRecord = deleteAttendanceRecord;
+
 function showInlineLoading(elementId, show = true) {
     const element = document.getElementById(elementId);
     if (!element) return;
