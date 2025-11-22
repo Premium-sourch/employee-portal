@@ -923,19 +923,32 @@ async function loadMonthlyStats() {
         const data = await apiRequest(`attendance/stats?month=${selectedMonth}`);
         const stats = data.stats;
 
+        // Calculate base gross salary (per month)
         const grossSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
                            (currentUser.profile.medicalTransport || 0);
 
-        const bonus = stats.absentDays > 0 ? 0 : (currentUser.profile.presentBonus || 0);
-        const netAfterDeduction = grossSalary - stats.totalDeduction;
-        const totalSalary = netAfterDeduction + bonus;
+        // Calculate present bonus (presentBonus × presentDays)
+        const totalPresentBonus = (currentUser.profile.presentBonus || 0) * stats.presentDays;
 
+        // If there are absent days, deduct from gross salary
+        const netAfterDeduction = grossSalary - stats.totalDeduction;
+
+        // Total salary = (gross - deductions) + (present bonus × days)
+        const totalSalary = netAfterDeduction + totalPresentBonus;
+
+        // Display format: Gross ± Deductions + Bonus = Total
         let salaryDisplay;
+        
         if (stats.absentDays > 0) {
-            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
+            // Show: (Gross - Deduction) + Bonus = Total
+            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(totalPresentBonus)} = ${formatCurrency(totalSalary)}`;
+        } else if (totalPresentBonus > 0) {
+            // Show: Gross + Bonus = Total
+            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(totalPresentBonus)} = ${formatCurrency(totalSalary)}`;
         } else {
-            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(bonus)} = ${formatCurrency(totalSalary)}`;
+            // Show: Gross = Total (no bonus, no deductions)
+            salaryDisplay = formatCurrency(totalSalary);
         }
 
         document.getElementById('stat-total-salary').textContent = salaryDisplay;
@@ -994,11 +1007,80 @@ async function loadWorkHistory() {
         showToast('ইতিহাস লোড করতে ত্রুটি', 'error');
     }
 }
+
+// ============================================================================
+// Optimistic UI Updates - For Faster Perceived Performance
+// ============================================================================
+
+/**
+ * Updates the UI immediately without waiting for server response
+ * Provides instant feedback to users
+ */
+function optimisticUpdateUI(action, data) {
+    console.log('🚀 Optimistic update:', action, data);
+    
+    switch(action) {
+        case 'add':
+            optimisticAddRecord(data);
+            break;
+        case 'delete':
+            optimisticDeleteRecord(data.date);
+            break;
+    }
+}
+
+/**
+ * Adds a record to the UI immediately
+ */
+function optimisticAddRecord(record) {
+    // Update stats immediately
+    const presentStat = document.getElementById('stat-present');
+    const absentStat = document.getElementById('stat-absent');
+    
+    if (record.status === 'present') {
+        const current = parseInt(presentStat.textContent.replace(/[০-৯,]/g, match => 
+            '০১২৩৪৫৬৭৮৯'.indexOf(match) !== -1 ? '০১২৩৪৫৬৭৮৯'.indexOf(match) : match
+        )) || 0;
+        presentStat.textContent = formatBanglaNumber(current + 1);
+    } else if (record.status === 'absent') {
+        const current = parseInt(absentStat.textContent.replace(/[০-৯,]/g, match => 
+            '০১২৩৪৫৬৭৮৯'.indexOf(match) !== -1 ? '০১২৩৪৫৬৭৮৯'.indexOf(match) : match
+        )) || 0;
+        absentStat.textContent = formatBanglaNumber(current + 1);
+    }
+    
+    // Add visual feedback
+    showToast('✨ রেকর্ড যুক্ত হচ্ছে...', 'info');
+}
+
+/**
+ * Removes a record from the UI immediately
+ */
+function optimisticDeleteRecord(date) {
+    const row = document.querySelector(`tr[data-date="${date}"]`);
+    if (row) {
+        // Add fade-out animation
+        row.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        row.style.opacity = '0';
+        row.style.transform = 'translateX(-20px)';
+        
+        // Remove after animation
+        setTimeout(() => {
+            row.remove();
+            
+            // Check if table is empty
+            const tbody = document.getElementById('history-tbody');
+            if (tbody.children.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td></tr>';
+            }
+        }, 300);
+    }
+}
+
 async function deleteAttendanceRecord(date) {
-    // Format date to YYYY-MM-DD to ensure consistency
+    // Format date to YYYY-MM-DD
     let formattedDate = date;
     if (date.includes('/') || date.includes('.')) {
-        // If date is in different format, convert it
         const parts = date.split(/[\/\.]/);
         if (parts.length === 3) {
             formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
@@ -1014,27 +1096,45 @@ async function deleteAttendanceRecord(date) {
 
     try {
         console.log('🗑️ Deleting record for date:', formattedDate);
-        showToast('রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
+        
+        // ✨ OPTIMISTIC UPDATE - Remove from UI immediately
+        optimisticDeleteRecord(formattedDate);
+        showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
 
-        await apiRequest('attendance/delete', {
+        // Send delete request to server in background
+        const requestPromise = apiRequest('attendance/delete', {
             method: 'POST',
             body: { date: formattedDate }
         });
 
-        showToast('রেকর্ড সফলভাবে মুছে ফেলা হয়েছে!', 'success');
+        // Show success immediately
+        setTimeout(() => {
+            showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
+        }, 400);
 
-        // Reload data
-        await loadMonthlyStats();
-        await loadWorkHistory();
-        await loadAvailableMonths();
-        await populateMonthSelect();
+        // Wait for server response
+        await requestPromise;
+
+        // Refresh data silently in background
+        Promise.all([
+            loadMonthlyStats(),
+            loadWorkHistory(),
+            loadAvailableMonths(),
+            populateMonthSelect()
+        ]).catch(err => {
+            console.error('Background refresh error:', err);
+            showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
+        });
 
     } catch (error) {
         console.error('Delete error:', error);
         showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
+        
+        // Reload to show correct data if delete failed
+        await loadMonthlyStats();
+        await loadWorkHistory();
     }
 }
-
 // Make the function globally accessible
 window.deleteAttendanceRecord = deleteAttendanceRecord;
 
@@ -1208,13 +1308,21 @@ async function handlePresentSubmit(event) {
         return;
     }
 
+    const selectedDate = new Date(date);
+    const isFriday = selectedDate.getDay() === 5;
+
     try {
-        showToast('উপস্থিতি রেকর্ড করা হচ্ছে...', 'info');
+        // ✨ OPTIMISTIC UPDATE - Close modal and update UI immediately
+        closeModal();
+        optimisticUpdateUI('add', { 
+            status: 'present', 
+            date: date,
+            otHours: otHours,
+            isFriday: isFriday
+        });
 
-        const selectedDate = new Date(date);
-        const isFriday = selectedDate.getDay() === 5;
-
-        await apiRequest('attendance/present', {
+        // Send to server in background
+        const requestPromise = apiRequest('attendance/present', {
             method: 'POST',
             body: {
                 date: date,
@@ -1225,17 +1333,29 @@ async function handlePresentSubmit(event) {
             }
         });
 
-        showToast('উপস্থিতি সফলভাবে রেকর্ড করা হয়েছে!', 'success');
-        closeModal();
+        // Show success immediately
+        showToast('✅ উপস্থিতি রেকর্ড হয়েছে!', 'success');
 
+        // Wait for server response in background
+        await requestPromise;
+
+        // Refresh data silently
+        Promise.all([
+            loadMonthlyStats(),
+            loadWorkHistory(),
+            loadAvailableMonths(),
+            populateMonthSelect()
+        ]).catch(err => {
+            console.error('Background refresh error:', err);
+            // If background refresh fails, show reload button
+            showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
+        });
+
+    } catch (error) {
+        // If server request fails, reload to show correct data
+        showToast(error.message, 'error');
         await loadMonthlyStats();
         await loadWorkHistory();
-
-        // Reload available months in case new month was created
-        await loadAvailableMonths();
-        await populateMonthSelect();
-    } catch (error) {
-        showToast(error.message, 'error');
     }
 }
 
@@ -1253,7 +1373,10 @@ async function handleAbsentSubmit(event) {
     try {
         showToast('অনুপস্থিতি রেকর্ড করা হচ্ছে...', 'info');
 
-        await apiRequest('attendance/absent', {
+        closeModal();  
+        optimisticUpdateUI('absent', { date, reason });
+
+        const promise = apiRequest('attendance/absent', {
             method: 'POST',
             body: {
                 date: date,
@@ -1262,13 +1385,14 @@ async function handleAbsentSubmit(event) {
         });
 
         showToast('অনুপস্থিতি রেকর্ড করা হয়েছে!', 'warning');
-        closeModal();
 
-        await loadMonthlyStats();
-        await loadWorkHistory();
+        await promise;
 
-        await loadAvailableMonths();
-        await populateMonthSelect();
+        loadMonthlyStats();
+        loadWorkHistory();
+        loadAvailableMonths();
+        populateMonthSelect();
+
     } catch (error) {
         showToast(error.message, 'error');
     }
@@ -1288,22 +1412,23 @@ async function handleOffdaySubmit(event) {
     try {
         showToast('ছুটি রেকর্ড করা হচ্ছে...', 'info');
 
-        await apiRequest('attendance/offday', {
+        closeModal();
+        optimisticUpdateUI('offday', { date, type });
+
+        const promise = apiRequest('attendance/offday', {
             method: 'POST',
-            body: {
-                date: date,
-                type: type
-            }
+            body: { date, type }
         });
 
         showToast('ছুটি রেকর্ড করা হয়েছে!', 'success');
-        closeModal();
 
-        await loadMonthlyStats();
-        await loadWorkHistory();
+        await promise;
 
-        await loadAvailableMonths();
-        await populateMonthSelect();
+        loadMonthlyStats();
+        loadWorkHistory();
+        loadAvailableMonths();
+        populateMonthSelect();
+
     } catch (error) {
         showToast(error.message, 'error');
     }
@@ -1323,22 +1448,23 @@ async function handleLeaveSubmit(event) {
     try {
         showToast('ছুটি রেকর্ড করা হচ্ছে...', 'info');
 
-        await apiRequest('attendance/leave', {
+        closeModal();
+        optimisticUpdateUI('leave', { date, type });
+
+        const promise = apiRequest('attendance/leave', {
             method: 'POST',
-            body: {
-                date: date,
-                type: type
-            }
+            body: { date, type }
         });
 
         showToast('ছুটি রেকর্ড করা হয়েছে!', 'success');
-        closeModal();
 
-        await loadMonthlyStats();
-        await loadWorkHistory();
+        await promise;
 
-        await loadAvailableMonths();
-        await populateMonthSelect();
+        loadMonthlyStats();
+        loadWorkHistory();
+        loadAvailableMonths();
+        populateMonthSelect();
+
     } catch (error) {
         showToast(error.message, 'error');
     }
