@@ -388,8 +388,19 @@ function updateCurrentDate() {
     document.getElementById('current-date').textContent = now.toLocaleDateString('bn-BD', options);
 }
 
-function formatDate(date) {
-    const d = new Date(date);
+function formatDate(dateStr) {
+    // Parse YYYY-MM-DD string correctly to avoid timezone issues
+    if (typeof dateStr === 'string') {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            // Create date using local timezone (year, month-1, day)
+            const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+            return d.toLocaleDateString('bn-BD', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+    }
+    
+    // Fallback for Date objects
+    const d = new Date(dateStr);
     return d.toLocaleDateString('bn-BD', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
@@ -976,12 +987,16 @@ async function loadWorkHistory() {
         tbody.innerHTML = data.records.map(record => {
             const totalHours = (record.workHours || 0) + (record.otHours || 0);
             
-            // Ensure date is in YYYY-MM-DD format
+            // Ensure date is in YYYY-MM-DD format - FIXED VERSION
             let recordDate = record.date;
             if (recordDate instanceof Date) {
-                recordDate = recordDate.toISOString().split('T')[0];
+                // Use local date to avoid timezone issues
+                const year = recordDate.getFullYear();
+                const month = String(recordDate.getMonth() + 1).padStart(2, '0');
+                const day = String(recordDate.getDate()).padStart(2, '0');
+                recordDate = `${year}-${month}-${day}`;
             } else if (typeof recordDate === 'string') {
-                // Clean the date string
+                // Clean the date string and ensure YYYY-MM-DD format
                 recordDate = recordDate.split('T')[0].split(' ')[0].trim();
             }
             
@@ -1078,14 +1093,21 @@ function optimisticDeleteRecord(date) {
 }
 
 async function deleteAttendanceRecord(date) {
-    // Format date to YYYY-MM-DD
+    // Clean and format date to YYYY-MM-DD
     let formattedDate = date;
-    if (date.includes('/') || date.includes('.')) {
-        const parts = date.split(/[\/\.]/);
+    
+    // Remove any time component or extra spaces
+    formattedDate = String(formattedDate).trim().split('T')[0].split(' ')[0];
+    
+    // If date contains slashes or dots, convert to YYYY-MM-DD
+    if (formattedDate.includes('/') || formattedDate.includes('.')) {
+        const parts = formattedDate.split(/[\/\.]/);
         if (parts.length === 3) {
             formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
     }
+    
+    console.log('📅 Cleaned date for deletion:', formattedDate);
 
     // Confirm before deletion
     const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
