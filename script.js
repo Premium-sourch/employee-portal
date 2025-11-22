@@ -389,28 +389,29 @@ function updateCurrentDate() {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return 'অজানা তারিখ';
-  
-  // If it's already a formatted date string in YYYY-MM-DD, parse it correctly
-  if (typeof dateStr === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      // Create date using local timezone (year, month-1, day)
-      const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
-      return d.toLocaleDateString('bn-BD', { year: 'numeric', month: 'short', day: 'numeric' });
+    // Parse YYYY-MM-DD string correctly to avoid timezone issues
+    if (typeof dateStr === 'string') {
+        const parts = dateStr.split('-');
+        if (parts.length === 3) {
+            // Create date using UTC to prevent timezone shifts
+            const d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+            return d.toLocaleDateString('bn-BD', { 
+                year: 'numeric', 
+                month: 'short', 
+                day: 'numeric',
+                timeZone: 'UTC' // Force UTC display
+            });
+        }
     }
-  }
-  
-  // Fallback for other date formats
-  try {
+    
+    // Fallback for Date objects
     const d = new Date(dateStr);
-    if (isNaN(d.getTime())) {
-      return 'অবৈধ তারিখ';
-    }
-    return d.toLocaleDateString('bn-BD', { year: 'numeric', month: 'short', day: 'numeric' });
-  } catch (e) {
-    return 'অবৈধ তারিখ';
-  }
+    return d.toLocaleDateString('bn-BD', { 
+        year: 'numeric', 
+        month: 'short', 
+        day: 'numeric',
+        timeZone: 'UTC'
+    });
 }
 
 function getBanglaStatus(status) {
@@ -996,11 +997,17 @@ async function loadWorkHistory() {
         tbody.innerHTML = data.records.map(record => {
             const totalHours = (record.workHours || 0) + (record.otHours || 0);
             
-            // Date is now always stored as YYYY-MM-DD string from backend
+            // Ensure date is in YYYY-MM-DD format - FIXED VERSION
             let recordDate = record.date;
-            // Just ensure it's clean
-            if (typeof recordDate === 'string') {
-              recordDate = recordDate.split('T')[0].split(' ')[0].trim();
+            if (recordDate instanceof Date) {
+                // Use UTC to prevent timezone shifts
+                const year = recordDate.getUTCFullYear();
+                const month = String(recordDate.getUTCMonth() + 1).padStart(2, '0');
+                const day = String(recordDate.getUTCDate()).padStart(2, '0');
+                recordDate = `${year}-${month}-${day}`;
+            } else if (typeof recordDate === 'string') {
+                // Clean the date string and ensure YYYY-MM-DD format
+                recordDate = recordDate.split('T')[0].split(' ')[0].trim();
             }
             
             return `
@@ -1096,77 +1103,69 @@ function optimisticDeleteRecord(date) {
 }
 
 async function deleteAttendanceRecord(date) {
-  // Ensure date is in YYYY-MM-DD format
-  let formattedDate = date;
-  
-  // If date is in a different format, convert it
-  if (typeof formattedDate === 'string') {
-    // Handle various date formats
-    if (formattedDate.includes('/')) {
-      const parts = formattedDate.split('/');
-      if (parts.length === 3) {
-        formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-      }
-    } else if (formattedDate.includes('.')) {
-      const parts = formattedDate.split('.');
-      if (parts.length === 3) {
-        formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-      }
+    // Clean and format date to YYYY-MM-DD
+    let formattedDate = date;
+    
+    // Remove any time component or extra spaces
+    formattedDate = String(formattedDate).trim().split('T')[0].split(' ')[0];
+    
+    // If date contains slashes or dots, convert to YYYY-MM-DD
+    if (formattedDate.includes('/') || formattedDate.includes('.')) {
+        const parts = formattedDate.split(/[\/\.]/);
+        if (parts.length === 3) {
+            formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
     }
     
-    // Remove any time component
-    formattedDate = formattedDate.split('T')[0].split(' ')[0];
-  }
-  
-  console.log('🗑️ Deleting record for date:', formattedDate);
+    console.log('📅 Cleaned date for deletion:', formattedDate);
 
-  // Confirm before deletion
-  const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
+    // Confirm before deletion
+    const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
 
-  if (!confirm(confirmMsg)) {
-    return;
-  }
+    if (!confirm(confirmMsg)) {
+        return;
+    }
 
-  try {
-    console.log('🗑️ Deleting record for date:', formattedDate);
-    
-    // ✨ OPTIMISTIC UPDATE - Remove from UI immediately
-    optimisticDeleteRecord(formattedDate);
-    showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
+    try {
+        console.log('🗑️ Deleting record for date:', formattedDate);
+        
+        // ✨ OPTIMISTIC UPDATE - Remove from UI immediately
+        optimisticDeleteRecord(formattedDate);
+        showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
 
-    // Send delete request to server in background
-    const requestPromise = apiRequest('attendance/delete', {
-      method: 'POST',
-      body: { date: formattedDate }
-    });
+        // Send delete request to server in background
+        const requestPromise = apiRequest('attendance/delete', {
+            method: 'POST',
+            body: { date: formattedDate }
+        });
 
-    // Show success immediately
-    setTimeout(() => {
-      showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
-    }, 400);
+        // Show success immediately
+        setTimeout(() => {
+            showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
+        }, 400);
 
-    // Wait for server response
-    await requestPromise;
+        // Wait for server response
+        await requestPromise;
 
-    // Refresh data silently in background
-    Promise.all([
-      loadMonthlyStats(),
-      loadWorkHistory(),
-      loadAvailableMonths(),
-      populateMonthSelect()
-    ]).catch(err => {
-      console.error('Background refresh error:', err);
-      showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
-    });
+        // Refresh data silently in background
+        Promise.all([
+            loadMonthlyStats(),
+            loadWorkHistory(),
+            loadAvailableMonths(),
+            populateMonthSelect()
+        ]).catch(err => {
+            console.error('Background refresh error:', err);
+            showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
+        });
 
-  } catch (error) {
-    console.error('Delete error:', error);
-    showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
-    
-    // Reload to show correct data if delete failed
-    await loadMonthlyStats();
-    await loadWorkHistory();
-  }
+    } catch (error) {
+        console.error('Delete error:', error);
+        showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
+        
+        // Reload to show correct data if delete failed
+        await loadMonthlyStats();
+        await loadWorkHistory();
+    }
 }
 // Make the function globally accessible
 window.deleteAttendanceRecord = deleteAttendanceRecord;
