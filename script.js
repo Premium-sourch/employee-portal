@@ -984,9 +984,12 @@ function updateProfileDisplay() {
         document.getElementById('profile-designation').textContent = decodeFormData(currentUser.profile.designation) || 'কর্মচারী';
         document.getElementById('profile-company').textContent = decodeFormData(currentUser.profile.company) || 'N/A';
 
+        // ✅ FIXED: Use medical + transport + food separately
         const totalSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
-                           (currentUser.profile.medicalTransport || 0);
+                           (currentUser.profile.medical || 750) +
+                           (currentUser.profile.transport || 450) +
+                           (currentUser.profile.food || 1250);
         document.getElementById('profile-salary').textContent = formatCurrency(totalSalary);
 
         if (currentUser.profile.profileImage) {
@@ -1044,11 +1047,19 @@ function updateProfileView() {
         document.getElementById('view-grade').textContent = decodeFormData(currentUser.profile.grade) || 'N/A';
         document.getElementById('view-basic-salary').textContent = formatCurrency(currentUser.profile.basicSalary || 0);
         document.getElementById('view-house-rent').textContent = formatCurrency(currentUser.profile.houseRent || 0);
-        document.getElementById('view-medical-transport').textContent = formatCurrency(currentUser.profile.medicalTransport || 0);
+        
+        // ✅ FIXED: Calculate combined medical+transport+food
+        const medicalTransportFood = (currentUser.profile.medical || 750) + 
+                                     (currentUser.profile.transport || 450) + 
+                                     (currentUser.profile.food || 1250);
+        document.getElementById('view-medical-transport').textContent = formatCurrency(medicalTransportFood);
 
+        // ✅ FIXED: Total salary includes all components
         const totalSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
-                           (currentUser.profile.medicalTransport || 0);
+                           (currentUser.profile.medical || 750) +
+                           (currentUser.profile.transport || 450) +
+                           (currentUser.profile.food || 1250);
         document.getElementById('view-total-salary').textContent = formatCurrency(totalSalary);
 
         document.getElementById('view-ot-rate').textContent = formatCurrency(currentUser.profile.otRate || 0);
@@ -1071,10 +1082,12 @@ async function loadMonthlyStats() {
         const data = await apiRequest(`attendance/stats?month=${selectedMonth}`);
         const stats = data.stats;
 
-        // Calculate base gross salary (per month)
+     // ✅ FIXED: Calculate base gross salary (per month)
         const grossSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
-                           (currentUser.profile.medicalTransport || 0);
+                           (currentUser.profile.medical || 750) +
+                           (currentUser.profile.transport || 450) +
+                           (currentUser.profile.food || 1250);
 
         // Calculate present bonus (presentBonus × presentDays)
         const totalPresentBonus = (currentUser.profile.presentBonus || 0) * stats.presentDays;
