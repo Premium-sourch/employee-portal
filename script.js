@@ -417,6 +417,120 @@ function formatDate(dateStr) {
         day: 'numeric'
     });
 }
+// ============================================================================
+// Salary Auto-Calculation Functions
+// ============================================================================
+
+/**
+ * Calculate salary components from gross salary
+ * Formula:
+ * - মূল মজুরি = (Gross - 2450) / 1.5
+ * - বাড়ী ভাড়া = মূল মজুরি × 50%
+ * - চিকিৎসা = 750 (fixed)
+ * - যাতায়াত = 450 (fixed)
+ * - খাদ্য ভাতা = 1250 (fixed)
+ * - ওটি রেট = মূল মজুরি / 104
+ */
+function calculateSalaryComponents(grossSalary) {
+    const gross = parseFloat(grossSalary) || 0;
+    
+    // Fixed allowances
+    const medical = 750;
+    const transport = 450;
+    const food = 1250;
+    const fixedTotal = medical + transport + food; // 2450
+    
+    // Calculate basic salary
+    const basicSalary = (gross - fixedTotal) / 1.5;
+    
+    // Calculate house rent (50% of basic)
+    const houseRent = basicSalary * 0.5;
+    
+    // Calculate OT rate
+    const otRate = basicSalary / 104;
+    
+    // Verify total
+    const totalSalary = basicSalary + houseRent + medical + transport + food;
+    
+    return {
+        basicSalary: Math.round(basicSalary * 100) / 100,
+        houseRent: Math.round(houseRent * 100) / 100,
+        medical: medical,
+        transport: transport,
+        food: food,
+        totalSalary: Math.round(totalSalary * 100) / 100,
+        otRate: Math.round(otRate * 100) / 100
+    };
+}
+
+/**
+ * Update the calculation preview in real-time
+ */
+function updateSalaryCalculationPreview() {
+    const grossInput = document.getElementById('initial-gross-salary');
+    if (!grossInput) return;
+    
+    const gross = parseFloat(grossInput.value) || 0;
+    
+    if (gross <= 0) {
+        document.getElementById('calc-basic').textContent = '৳০';
+        document.getElementById('calc-house').textContent = '৳০';
+        document.getElementById('calc-total').textContent = '৳০';
+        document.getElementById('calc-ot').textContent = '৳০';
+        return;
+    }
+    
+    const components = calculateSalaryComponents(gross);
+    
+    document.getElementById('calc-basic').textContent = formatCurrency(components.basicSalary);
+    document.getElementById('calc-house').textContent = formatCurrency(components.houseRent);
+    document.getElementById('calc-total').textContent = formatCurrency(components.totalSalary);
+    document.getElementById('calc-ot').textContent = formatCurrency(components.otRate);
+}
+
+/**
+ * Store calculated salary data temporarily
+ */
+let calculatedSalaryData = null;
+
+/**
+ * Handle Grade & Gross Salary form submission
+ */
+async function handleGradeGrossSubmit(event) {
+    event.preventDefault();
+    
+    const grade = sanitizeInput(document.getElementById('initial-grade').value);
+    const grossSalary = sanitizeNumber(document.getElementById('initial-gross-salary').value);
+    
+    if (!grade || grossSalary <= 0) {
+        showToast('সমস্ত ফিল্ড সঠিকভাবে পূরণ করুন', 'error');
+        return;
+    }
+    
+    // Calculate components
+    const components = calculateSalaryComponents(grossSalary);
+    
+    // Store for next step
+    calculatedSalaryData = {
+        grade: grade,
+        ...components
+    };
+    
+    // Pre-fill profile setup form
+    document.getElementById('setup-grade').value = grade;
+    document.getElementById('setup-basic-salary').value = components.basicSalary;
+    document.getElementById('setup-house-rent').value = components.houseRent;
+    document.getElementById('setup-medical').value = components.medical;
+    document.getElementById('setup-transport').value = components.transport;
+    document.getElementById('setup-food').value = components.food;
+    document.getElementById('setup-total-salary').value = components.totalSalary;
+    document.getElementById('setup-ot-rate').value = components.otRate;
+    
+    showToast('✅ বেতন হিসাব সম্পন্ন!', 'success');
+    
+    // Move to profile setup
+    switchScreen('profile-setup-screen');
+}
 
 function getBanglaStatus(status) {
     const statusMap = {
@@ -550,9 +664,9 @@ async function handleRegister(event) {
 
         cleanupLoading();
 
-        // Always go to profile setup after registration
-        console.log('Registration complete, going to profile setup');
-        goToProfileSetup();
+        // Go to grade/gross modal first
+        console.log('Registration complete, going to grade/gross entry');
+        switchScreen('grade-gross-modal');
     } catch (error) {
         switchScreen('auth-screen');
         showToast(error.message || 'নিবন্ধন করতে সমস্যা হয়েছে', 'error');
@@ -732,14 +846,21 @@ async function handleProfileSetup(event) {
     const cardNo = sanitizeInput(document.getElementById('setup-card-no').value);
     const section = sanitizeInput(document.getElementById('setup-section').value);
     const designation = sanitizeInput(document.getElementById('setup-designation').value);
-    const grade = sanitizeInput(document.getElementById('setup-grade').value);
-    const basicSalary = sanitizeNumber(document.getElementById('setup-basic-salary').value);
-    const houseRent = sanitizeNumber(document.getElementById('setup-house-rent').value);
-    const medicalTransport = sanitizeNumber(document.getElementById('setup-medical-transport').value);
-    const otRate = sanitizeNumber(document.getElementById('setup-ot-rate').value);
+    
+    // Get calculated salary data (readonly fields)
+    const grade = document.getElementById('setup-grade').value;
+    const basicSalary = parseFloat(document.getElementById('setup-basic-salary').value);
+    const houseRent = parseFloat(document.getElementById('setup-house-rent').value);
+    const medical = parseFloat(document.getElementById('setup-medical').value);
+    const transport = parseFloat(document.getElementById('setup-transport').value);
+    const food = parseFloat(document.getElementById('setup-food').value);
+    const otRate = parseFloat(document.getElementById('setup-ot-rate').value);
+    
+    // Get manual entry fields
     const presentBonus = sanitizeNumber(document.getElementById('setup-present-bonus').value);
     const nightAllowance = sanitizeNumber(document.getElementById('setup-night-allowance').value);
     const tiffinBill = sanitizeNumber(document.getElementById('setup-tiffin').value);
+    
     try {
         const cleanupLoading = showEnhancedLoading('প্রোফাইল সংরক্ষণ করা হচ্ছে...');
 
@@ -754,7 +875,9 @@ async function handleProfileSetup(event) {
                 grade,
                 basicSalary,
                 houseRent,
-                medicalTransport,
+                medical,
+                transport,
+                food,
                 otRate,
                 presentBonus,
                 nightAllowance,
@@ -1934,7 +2057,19 @@ document.addEventListener('DOMContentLoaded', () => {
     document.querySelectorAll('input[type="date"]').forEach(input => {
         input.value = today;
     });
-
+    // Grade & Gross Salary form
+    const gradeGrossForm = document.getElementById('grade-gross-form');
+    if (gradeGrossForm) {
+        gradeGrossForm.addEventListener('submit', handleGradeGrossSubmit);
+        console.log('✅ Grade/Gross form listener added');
+    }
+    
+    // Real-time calculation update
+    const grossSalaryInput = document.getElementById('initial-gross-salary');
+    if (grossSalaryInput) {
+        grossSalaryInput.addEventListener('input', updateSalaryCalculationPreview);
+        console.log('✅ Real-time calculation listener added');
+    }
     // Attempt auto-login on page load
     console.log('Attempting auto-login...');
     attemptAutoLogin();
