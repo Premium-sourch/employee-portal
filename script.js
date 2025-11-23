@@ -377,9 +377,12 @@ function formatCurrency(amount) {
     return `৳${formatBanglaNumber(formatted)}`;
 }
 
+
 function getCurrentMonth() {
     const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    return `${year}-${month}`;
 }
 
 function updateCurrentDate() {
@@ -389,28 +392,29 @@ function updateCurrentDate() {
 }
 
 function formatDate(dateStr) {
-    // Parse YYYY-MM-DD string correctly to avoid timezone issues
     if (typeof dateStr === 'string') {
         const parts = dateStr.split('-');
         if (parts.length === 3) {
-            // Create date using UTC to prevent timezone shifts
-            const d = new Date(Date.UTC(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2])));
+            const year = parseInt(parts[0]);
+            const month = parseInt(parts[1]) - 1;
+            const day = parseInt(parts[2]);
+            
+            // Create date in LOCAL timezone
+            const d = new Date(year, month, day);
+            
             return d.toLocaleDateString('bn-BD', {
                 year: 'numeric',
                 month: 'short',
-                day: 'numeric',
-                timeZone: 'UTC' // Force UTC display
+                day: 'numeric'
             });
         }
     }
 
-    // Fallback for Date objects
     const d = new Date(dateStr);
     return d.toLocaleDateString('bn-BD', {
         year: 'numeric',
         month: 'short',
-        day: 'numeric',
-        timeZone: 'UTC'
+        day: 'numeric'
     });
 }
 
