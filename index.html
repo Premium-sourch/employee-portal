@@ -184,69 +184,37 @@
                                 <label>পদবি</label>
                                 <input type="text" id="setup-designation" required>
                             </div>
-                            <div class="form-group">
-                                <label>গ্রেড</label>
-                                <input type="text" id="setup-grade" required>
-                            </div>
                         </div>
                     </div>
 
+                    <!-- HIDDEN FIELDS - Auto-calculated values stored here -->
+                    <input type="hidden" id="setup-grade">
+                    <input type="hidden" id="setup-basic-salary">
+                    <input type="hidden" id="setup-house-rent">
+                    <input type="hidden" id="setup-medical">
+                    <input type="hidden" id="setup-transport">
+                    <input type="hidden" id="setup-food">
+                    <input type="hidden" id="setup-total-salary">
+                    <input type="hidden" id="setup-ot-rate">
+
+                    <!-- MANUAL ENTRY SECTION - Only these are visible -->
                     <div class="form-section">
-					    <h3><i class="fas fa-money-bill-wave"></i> বেতন তথ্য (স্বয়ংক্রিয়)</h3>
-					    <div class="form-grid">
-					        <div class="form-group">
-					            <label>গ্রেড</label>
-					            <input type="text" id="setup-grade" required readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
-					        </div>
-					        <div class="form-group">
-					            <label>মূল মজুরি</label>
-					            <input type="number" id="setup-basic-salary" required readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
-					        </div>
-					        <div class="form-group">
-					            <label>বাড়ী ভাড়া (৫০%)</label>
-					            <input type="number" id="setup-house-rent" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
-					        </div>
-					        <div class="form-group">
-					            <label>চিকিৎসা</label>
-					            <input type="number" id="setup-medical" value="750" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
-					        </div>
-					        <div class="form-group">
-					            <label>যাতায়াত</label>
-					            <input type="number" id="setup-transport" value="450" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
-					        </div>
-					        <div class="form-group">
-					            <label>খাদ্য ভাতা</label>
-					            <input type="number" id="setup-food" value="1250" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
-					        </div>
-					        <div class="form-group">
-					            <label>মোট মজুরি</label>
-					            <input type="number" id="setup-total-salary" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; font-weight: bold;">
-					        </div>
-					        <div class="form-group">
-					            <label>ওভারটাইম রেট</label>
-					            <input type="number" id="setup-ot-rate" required readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
-					        </div>
-					    </div>
-					</div>
-					
-					<!-- NEW SECTION: Manual Entry Fields -->
-					<div class="form-section">
-					    <h3><i class="fas fa-gift"></i> অতিরিক্ত ভাতা (ম্যানুয়াল এন্ট্রি)</h3>
-					    <div class="form-grid">
-					        <div class="form-group">
-					            <label>হাজিরা বোনাস</label>
-					            <input type="number" id="setup-present-bonus" value="0" min="0" step="0.01" required>
-					        </div>
-					        <div class="form-group">
-					            <label>রাত্রিকালীন ভাতা</label>
-					            <input type="number" id="setup-night-allowance" value="0" min="0" step="0.01" required>
-					        </div>
-					        <div class="form-group">
-					            <label>টিফিন বিল</label>
-					            <input type="number" id="setup-tiffin" value="0" min="0" step="0.01" required>
-					        </div>
-					    </div>
-					</div>
+                        <h3><i class="fas fa-gift"></i> অতিরিক্ত ভাতা (ম্যানুয়াল এন্ট্রি)</h3>
+                        <div class="form-grid">
+                            <div class="form-group">
+                                <label>হাজিরা বোনাস</label>
+                                <input type="number" id="setup-present-bonus" value="0" min="0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>রাত্রিকালীন ভাতা</label>
+                                <input type="number" id="setup-night-allowance" value="0" min="0" step="0.01" required>
+                            </div>
+                            <div class="form-group">
+                                <label>টিফিন বিল</label>
+                                <input type="number" id="setup-tiffin" value="0" min="0" step="0.01" required>
+                            </div>
+                        </div>
+                    </div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary btn-block">
