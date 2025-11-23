@@ -1103,85 +1103,76 @@ function optimisticDeleteRecord(date) {
 }
 
 async function deleteAttendanceRecord(date) {
-    // ✅ STEP 1: Clean and format date to YYYY-MM-DD
-    let formattedDate = String(date).trim();
-    
-    // Remove time component
-    if (formattedDate.includes('T')) {
-        formattedDate = formattedDate.split('T')[0];
-    }
-    if (formattedDate.includes(' ')) {
-        formattedDate = formattedDate.split(' ')[0];
-    }
-    
-    // Convert DD/MM/YYYY or DD.MM.YYYY to YYYY-MM-DD if needed
-    if (formattedDate.includes('/') || formattedDate.includes('.')) {
-        const parts = formattedDate.split(/[\/\.]/);
-        if (parts.length === 3) {
-            // Assume DD/MM/YYYY format
-            formattedDate = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-        }
-    }
-    
-    console.log('🗑️ Delete - Formatted date:', formattedDate);
-    
-    // ✅ STEP 2: Validate format
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
-        showToast('তারিখ ফরম্যাট সমস্যা', 'error');
-        console.error('Invalid date format:', formattedDate);
-        return;
-    }
+  // ✅ STEP 1: Clean and format date to YYYY-MM-DD
+  let formattedDate = String(date).trim();
+  
+  // Remove time component
+  if (formattedDate.includes('T')) {
+    formattedDate = formattedDate.split('T')[0];
+  }
+  if (formattedDate.includes(' ')) {
+    formattedDate = formattedDate.split(' ')[0];
+  }
+  
+  console.log('🗑️ Delete - Formatted date:', formattedDate);
+  
+  // ✅ STEP 2: Validate format
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
+    showToast('তারিখ ফরম্যাট সমস্যা', 'error');
+    console.error('Invalid date format:', formattedDate);
+    return;
+  }
 
-    // ✅ STEP 3: Confirm deletion
-    const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
-    if (!confirm(confirmMsg)) {
-        return;
-    }
+  // ✅ STEP 3: Confirm deletion
+  const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
+  if (!confirm(confirmMsg)) {
+    return;
+  }
 
-    try {
-        console.log('🗑️ Sending delete request for date:', formattedDate);
+  try {
+    console.log('🗑️ Sending delete request for date:', formattedDate);
 
-        // ✅ STEP 4: Optimistic UI update (remove from display immediately)
-        optimisticDeleteRecord(formattedDate);
-        showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
+    // ✅ STEP 4: Optimistic UI update (remove from display immediately)
+    optimisticDeleteRecord(formattedDate);
+    showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
 
-        // ✅ STEP 5: Send delete request to backend
-        const response = await apiRequest('attendance/delete', {
-            method: 'POST',
-            body: { date: formattedDate }
-        });
+    // ✅ STEP 5: Send delete request to backend
+    const response = await apiRequest('attendance/delete', {
+      method: 'POST',
+      body: { date: formattedDate }
+    });
 
-        console.log('✅ Delete response:', response);
+    console.log('✅ Delete response:', response);
 
-        // Show success
-        showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
+    // Show success
+    showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
 
-        // ✅ STEP 6: Refresh data in background
-        setTimeout(async () => {
-            try {
-                await Promise.all([
-                    loadMonthlyStats(),
-                    loadWorkHistory(),
-                    loadAvailableMonths(),
-                    populateMonthSelect()
-                ]);
-                console.log('✅ Data refreshed after delete');
-            } catch (err) {
-                console.error('Background refresh error:', err);
-                showToast('📄 পেজ রিলোড করুন', 'warning');
-            }
-        }, 500);
-
-    } catch (error) {
-        console.error('❌ Delete error:', error);
-        showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
-
-        // Reload to show correct data
+    // ✅ STEP 6: Refresh data in background
+    setTimeout(async () => {
+      try {
         await Promise.all([
-            loadMonthlyStats(),
-            loadWorkHistory()
+          loadMonthlyStats(),
+          loadWorkHistory(),
+          loadAvailableMonths(),
+          populateMonthSelect()
         ]);
-    }
+        console.log('✅ Data refreshed after delete');
+      } catch (err) {
+        console.error('Background refresh error:', err);
+        showToast('📄 পেজ রিলোড করুন', 'warning');
+      }
+    }, 500);
+
+  } catch (error) {
+    console.error('❌ Delete error:', error);
+    showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
+
+    // Reload to show correct data
+    await Promise.all([
+      loadMonthlyStats(),
+      loadWorkHistory()
+    ]);
+  }
 }
 // Make the function globally accessible
 window.deleteAttendanceRecord = deleteAttendanceRecord;
@@ -1366,83 +1357,85 @@ async function handlePresentSubmit(event) {
     const isUpdate = existingRecord !== null;
 
     try {
-        // Close modal immediately for better UX
-        closeModal();
+  // Close modal immediately for better UX
+  closeModal();
 
-        // Show appropriate message
-        if (isUpdate) {
-            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
-        } else {
-            showToast('➕ নতুন রেকর্ড যুক্ত হচ্ছে...', 'info');
-        }
+  // Check if record exists
+  const existingRecord = checkIfRecordExists(date);
+  const isUpdate = existingRecord !== null;
 
-        // Optimistic update
-        optimisticUpdateUI('add', {
-            status: 'present',
-            date: date,
-            otHours: otHours,
-            isFriday: isFriday
-        });
+  // Show appropriate message
+  if (isUpdate) {
+    showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
+  } else {
+    showToast('➕ নতুন রেকর্ড যুক্ত হচ্ছে...', 'info');
+  }
 
-        // Send to server
-        const requestPromise = apiRequest('attendance/present', {
-            method: 'POST',
-            body: {
-                date: date,
-                otHours: otHours,
-                isFriday: isFriday,
-                workHours: isFriday ? 0 : 8,
-                totalHours: isFriday ? otHours : (8 + otHours)
-            }
-        });
+  // Optimistic update
+  optimisticUpdateUI('add', {
+    status: 'present',
+    date: date,
+    otHours: otHours,
+    isFriday: isFriday
+  });
 
-        // Show success message
-        if (isUpdate) {
-            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
-        } else {
-            showToast('✅ উপস্থিতি রেকর্ড হয়েছে!', 'success');
-        }
-
-        // Wait for server response in background
-        await requestPromise;
-
-        // Refresh data silently (500ms delay to ensure backend processing complete)
-        setTimeout(() => {
-            Promise.all([
-                loadMonthlyStats(),
-                loadWorkHistory(),
-                loadAvailableMonths(),
-                populateMonthSelect()
-            ]).catch(err => {
-                console.error('Background refresh error:', err);
-                showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
-            });
-        }, 500);
-
-    } catch (error) {
-        // If server request fails, reload to show correct data
-        showToast(error.message, 'error');
-        await loadMonthlyStats();
-        await loadWorkHistory();
+  // Send to server
+  const requestPromise = apiRequest('attendance/present', {
+    method: 'POST',
+    body: {
+      date: date,
+      otHours: otHours,
+      isFriday: isFriday,
+      workHours: isFriday ? 0 : 8,
+      totalHours: isFriday ? otHours : (8 + otHours)
     }
-}
+  });
 
+  // Show success message
+  if (isUpdate) {
+    showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
+  } else {
+    showToast('✅ উপস্থিতি রেকর্ড হয়েছে!', 'success');
+  }
+
+  // Wait for server response
+  await requestPromise;
+
+  // Refresh data
+  setTimeout(() => {
+    Promise.all([
+      loadMonthlyStats(),
+      loadWorkHistory(),
+      loadAvailableMonths(),
+      populateMonthSelect()
+    ]).catch(err => {
+      console.error('Background refresh error:', err);
+      showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
+    });
+  }, 500);
+
+} catch (error) {
+  showToast(error.message, 'error');
+  await loadMonthlyStats();
+  await loadWorkHistory();
+}
+}
 // Helper function to check if record exists for a date
 function checkIfRecordExists(date) {
-    const tbody = document.getElementById('history-tbody');
-    const rows = tbody.querySelectorAll('tr[data-date]');
-    
-    // Normalize the input date to YYYY-MM-DD
-    const searchDate = String(date).trim().split('T')[0].split(' ')[0];
-    
-    for (let row of rows) {
-        const rowDate = row.getAttribute('data-date');
-        if (rowDate === searchDate) {
-            return row; // Record exists
-        }
+  const tbody = document.getElementById('history-tbody');
+  const rows = tbody.querySelectorAll('tr[data-date]');
+  
+  // Normalize the input date to YYYY-MM-DD
+  const searchDate = String(date).trim().split('T')[0].split(' ')[0];
+  
+  for (let row of rows) {
+    const rowDate = row.getAttribute('data-date');
+    if (rowDate === searchDate) {
+      return row; // Record exists
     }
-    
-    return null; // No record found
+  }
+  
+  return null; // No record found
 }
 
 // Also update handleAbsentSubmit, handleOffdaySubmit, and handleLeaveSubmit
