@@ -2244,6 +2244,52 @@ body {
     }
 }
 
+/* Footer Styles */
+.site-footer {
+    background: rgba(30, 41, 59, 0.95);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    color: white;
+    text-align: center;
+    padding: 24px 20px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: auto;
+}
+
+.footer-content {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.footer-content p {
+    margin: 6px 0;
+    font-size: 14px;
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.footer-name {
+    color: #818cf8;
+    font-weight: 600;
+    font-size: 16px;
+}
+
+.footer-year {
+    font-size: 13px;
+    opacity: 0.7;
+}
+#dashboard-screen {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.main-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+}
+
+
 /* ============================================================================
    Margin Utility Classes
    ============================================================================ */
