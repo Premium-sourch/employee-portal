@@ -73,7 +73,71 @@
             </div>
         </div>
     </div>
-
+	<!-- Grade & Gross Salary Modal -->
+	<div id="grade-gross-modal" class="screen">
+	    <div class="setup-wrapper">
+	        <div class="setup-card" style="max-width: 500px;">
+	            <div class="setup-header">
+	                <i class="fas fa-calculator"></i>
+	                <h2>বেতন তথ্য প্রদান করুন</h2>
+	                <p>গ্রেড এবং মোট বেতন লিখুন</p>
+	            </div>
+	
+	            <form id="grade-gross-form">
+	                <div class="form-section">
+	                    <div class="form-group">
+	                        <label>গ্রেড</label>
+	                        <input type="text" id="initial-grade" placeholder="যেমন: A, B, C" required>
+	                    </div>
+	                    <div class="form-group">
+	                        <label>মোট মজুরি (Gross Salary)</label>
+	                        <input type="number" id="initial-gross-salary" placeholder="যেমন: 15000" required min="0" step="0.01">
+	                    </div>
+	                </div>
+	
+	                <!-- Auto-calculated preview -->
+	                <div class="calculation-preview" style="margin-top: 20px;">
+	                    <h4>স্বয়ংক্রিয় হিসাব:</h4>
+	                    <div class="calc-item">
+	                        <span>মূল মজুরি:</span>
+	                        <span id="calc-basic">৳০</span>
+	                    </div>
+	                    <div class="calc-item">
+	                        <span>বাড়ী ভাড়া (৫০%):</span>
+	                        <span id="calc-house">৳০</span>
+	                    </div>
+	                    <div class="calc-item">
+	                        <span>চিকিৎসা:</span>
+	                        <span>৳৭৫০</span>
+	                    </div>
+	                    <div class="calc-item">
+	                        <span>যাতায়াত:</span>
+	                        <span>৳৪৫০</span>
+	                    </div>
+	                    <div class="calc-item">
+	                        <span>খাদ্য ভাতা:</span>
+	                        <span>৳১২৫০</span>
+	                    </div>
+	                    <div class="calc-item" style="border-top: 2px solid rgba(255,255,255,0.2); padding-top: 8px; margin-top: 8px; font-weight: bold;">
+	                        <span>মোট মজুরি:</span>
+	                        <span id="calc-total">৳০</span>
+	                    </div>
+	                    <div class="calc-item">
+	                        <span>ওভারটাইম রেট:</span>
+	                        <span id="calc-ot">৳০</span>
+	                    </div>
+	                </div>
+	
+	                <div class="form-actions">
+	                    <button type="submit" class="btn btn-primary btn-block">
+	                        <i class="fas fa-arrow-right"></i>
+	                        পরবর্তী
+	                    </button>
+	                </div>
+	            </form>
+	        </div>
+	    </div>
+	</div>
     <!-- Profile Setup Screen -->
     <div id="profile-setup-screen" class="screen">
         <div class="setup-wrapper">
@@ -128,38 +192,61 @@
                     </div>
 
                     <div class="form-section">
-                        <h3><i class="fas fa-money-bill-wave"></i> বেতন তথ্য</h3>
-                        <div class="form-grid">
-                            <div class="form-group">
-                                <label>মূল মজুরি</label>
-                                <input type="number" id="setup-basic-salary" required min="0" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>বাড়ী ভাড়া</label>
-                                <input type="number" id="setup-house-rent" value="0" min="0" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>চিকিৎসা যাতায়াত ভাতা</label>
-                                <input type="number" id="setup-medical-transport" value="0" min="0" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>ওভারটাইম রেট</label>
-                                <input type="number" id="setup-ot-rate" required min="0" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>হাজিরা বোনাস</label>
-                                <input type="number" id="setup-present-bonus" value="0" min="0" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>রাত্রিকালীন ভাতা</label>
-                                <input type="number" id="setup-night-allowance" value="0" min="0" step="0.01">
-                            </div>
-                            <div class="form-group">
-                                <label>টিফিন বিল</label>
-                                <input type="number" id="setup-tiffin" value="0" min="0" step="0.01">
-                            </div>
-                        </div>
-                    </div>
+					    <h3><i class="fas fa-money-bill-wave"></i> বেতন তথ্য (স্বয়ংক্রিয়)</h3>
+					    <div class="form-grid">
+					        <div class="form-group">
+					            <label>গ্রেড</label>
+					            <input type="text" id="setup-grade" required readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
+					        </div>
+					        <div class="form-group">
+					            <label>মূল মজুরি</label>
+					            <input type="number" id="setup-basic-salary" required readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
+					        </div>
+					        <div class="form-group">
+					            <label>বাড়ী ভাড়া (৫০%)</label>
+					            <input type="number" id="setup-house-rent" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
+					        </div>
+					        <div class="form-group">
+					            <label>চিকিৎসা</label>
+					            <input type="number" id="setup-medical" value="750" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
+					        </div>
+					        <div class="form-group">
+					            <label>যাতায়াত</label>
+					            <input type="number" id="setup-transport" value="450" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
+					        </div>
+					        <div class="form-group">
+					            <label>খাদ্য ভাতা</label>
+					            <input type="number" id="setup-food" value="1250" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
+					        </div>
+					        <div class="form-group">
+					            <label>মোট মজুরি</label>
+					            <input type="number" id="setup-total-salary" readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed; font-weight: bold;">
+					        </div>
+					        <div class="form-group">
+					            <label>ওভারটাইম রেট</label>
+					            <input type="number" id="setup-ot-rate" required readonly style="background: rgba(255,255,255,0.05); cursor: not-allowed;">
+					        </div>
+					    </div>
+					</div>
+					
+					<!-- NEW SECTION: Manual Entry Fields -->
+					<div class="form-section">
+					    <h3><i class="fas fa-gift"></i> অতিরিক্ত ভাতা (ম্যানুয়াল এন্ট্রি)</h3>
+					    <div class="form-grid">
+					        <div class="form-group">
+					            <label>হাজিরা বোনাস</label>
+					            <input type="number" id="setup-present-bonus" value="0" min="0" step="0.01" required>
+					        </div>
+					        <div class="form-group">
+					            <label>রাত্রিকালীন ভাতা</label>
+					            <input type="number" id="setup-night-allowance" value="0" min="0" step="0.01" required>
+					        </div>
+					        <div class="form-group">
+					            <label>টিফিন বিল</label>
+					            <input type="number" id="setup-tiffin" value="0" min="0" step="0.01" required>
+					        </div>
+					    </div>
+					</div>
 
                     <div class="form-actions">
                         <button type="submit" class="btn btn-primary btn-block">
