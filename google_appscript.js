@@ -542,25 +542,39 @@ function handlePresent(user, params) {
   const work = Number(workHours) || 8;
   const isFri = String(isFriday) === 'true';
 
+  // ✅ Calculate daily salary from gross components
   const dailySalary = (profile.basicSalary + profile.houseRent + profile.medical + profile.transport + profile.food) / 30;
 
   let earned = 0;
 
   if (isFri) {
-    // Friday: Only OT (NO present bonus daily)
+    // ✅ Friday: ONLY OT earnings (no base salary on Friday)
     earned = (ot * profile.otRate);
   } else {
-    // Regular day: Daily Salary + OT (NO present bonus daily)
+    // ✅ Regular day: Daily Salary + OT (NO BONUS ADDED HERE)
     earned = dailySalary + (ot * profile.otRate);
   }
 
+  // ✅ Add tiffin allowance if OT >= 5 hours
   if (ot >= 5) {
     earned += profile.tiffinBill;
   }
 
+  // ✅ Add night allowance if OT >= 7 hours
   if (ot >= 7) {
     earned += profile.nightAllowance;
   }
+
+  // ✅ IMPORTANT: Present bonus is NOT added here
+  // It's calculated monthly in handleGetStats() based on zero absents
+
+  Logger.log('💰 Daily Calculation Breakdown:');
+  Logger.log('  - Daily Salary: ৳' + dailySalary.toFixed(2));
+  Logger.log('  - OT Amount: ৳' + (ot * profile.otRate).toFixed(2));
+  Logger.log('  - Tiffin: ৳' + (ot >= 5 ? profile.tiffinBill : 0));
+  Logger.log('  - Night: ৳' + (ot >= 7 ? profile.nightAllowance : 0));
+  Logger.log('  - TOTAL EARNED: ৳' + earned.toFixed(2));
+  Logger.log('  - Present Bonus: NOT added (monthly calculation only)');
 
   saveAttendanceRecord({
     userId: user.id,
@@ -569,7 +583,7 @@ function handlePresent(user, params) {
     workHours: work,
     otHours: ot,
     totalHours: work + ot,
-    earned: earned,
+    earned: earned, // ✅ Correct daily amount without bonus
     deduction: 0,
     details: isFri ? 'Friday Work' : 'Regular Work'
   });
@@ -1256,4 +1270,62 @@ function viewAllAttendanceRecords() {
     'Records Listed!\n\n' +
     'Check the Execution log (View > Logs) to see all records.'
   );
+}
+
+function debugNov24Calculation() {
+  const userId = '627062'; // Your user ID
+  const profile = getProfile(userId);
+  
+  Logger.log('=== YOUR PROFILE ===');
+  Logger.log('Basic Salary: ৳' + profile.basicSalary);
+  Logger.log('House Rent: ৳' + profile.houseRent);
+  Logger.log('Medical: ৳' + profile.medical);
+  Logger.log('Transport: ৳' + profile.transport);
+  Logger.log('Food: ৳' + profile.food);
+  Logger.log('OT Rate: ৳' + profile.otRate);
+  Logger.log('Present Bonus (MONTHLY): ৳' + profile.presentBonus);
+  
+  const totalGross = profile.basicSalary + profile.houseRent + profile.medical + profile.transport + profile.food;
+  Logger.log('');
+  Logger.log('Total Gross: ৳' + totalGross);
+  
+  const dailySalary = totalGross / 30;
+  Logger.log('');
+  Logger.log('=== NOV 24 CALCULATION (8 work + 3 OT) ===');
+  Logger.log('Daily Salary: ৳' + dailySalary.toFixed(2));
+  Logger.log('OT Amount (3 hours): ৳' + (3 * profile.otRate).toFixed(2));
+  Logger.log('');
+  Logger.log('TOTAL: ৳' + (dailySalary + (3 * profile.otRate)).toFixed(2));
+  Logger.log('');
+  Logger.log('Expected: ৳1,591.93');
+  Logger.log('Actual: ৳' + (dailySalary + (3 * profile.otRate)).toFixed(2));
+  
+  // Now check what's actually stored in the sheet
+  Logger.log('');
+  Logger.log('=== CHECKING SHEET DATA ===');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName('Attendance_2025_11');
+  
+  if (sheet) {
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      const rowUserId = String(data[i][0]).trim();
+      const rowDate = normalizeDateToString(data[i][1]);
+      
+      if (rowUserId === userId && rowDate === '2025-11-24') {
+        Logger.log('Found Nov 24 record:');
+        Logger.log('  - UserID: ' + data[i][0]);
+        Logger.log('  - Date: ' + data[i][1]);
+        Logger.log('  - Status: ' + data[i][2]);
+        Logger.log('  - Work Hours: ' + data[i][3]);
+        Logger.log('  - OT Hours: ' + data[i][4]);
+        Logger.log('  - Total Hours: ' + data[i][5]);
+        Logger.log('  - Earned: ৳' + data[i][6]); // 👈 THIS IS WHAT'S STORED
+        Logger.log('  - Deduction: ৳' + data[i][7]);
+        Logger.log('  - Details: ' + data[i][8]);
+      }
+    }
+  } else {
+    Logger.log('Sheet not found!');
+  }
 }
