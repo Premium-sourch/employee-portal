@@ -1,6 +1,8 @@
 // ============================================================================
-// Employee Portal - Google Apps Script Backend (CORRECTED VERSION)
-// Fixed to work perfectly with the frontend code
+// Employee Portal - Google Apps Script Backend (COMPLETE - ALL FIXES)
+// ✅ Auto-replace duplicate entries
+// ✅ Fixed delete function
+// ✅ Fixed timezone issues (Asia/Dhaka)
 // ============================================================================
 
 // SHEET NAMES
@@ -8,45 +10,68 @@ const SHEETS = {
   USERS: 'Users',
   PROFILES: 'Profiles',
   SESSIONS: 'Sessions'
-  // Attendance sheets will be dynamic: Attendance_YYYY_MM
 };
 
 // ============================================================================
-// Secure Password Hashing
+// Date Normalization - TIMEZONE FIXED
+// ============================================================================
+
+function normalizeDateToString(dateInput) {
+  if (!dateInput) return null;
+  
+  let dateStr = '';
+  
+  if (dateInput instanceof Date) {
+    // ✅ Use Asia/Dhaka timezone to prevent date shifts
+    dateStr = Utilities.formatDate(dateInput, 'Asia/Dhaka', 'yyyy-MM-dd');
+  } else if (typeof dateInput === 'string') {
+    dateStr = String(dateInput).trim();
+    if (dateStr.includes('T')) {
+      dateStr = dateStr.split('T')[0];
+    }
+    if (dateStr.includes(' ')) {
+      dateStr = dateStr.split(' ')[0];
+    }
+  } else {
+    return null;
+  }
+  
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+    Logger.log('⚠️ Invalid date format: ' + dateStr);
+    return null;
+  }
+  
+  return dateStr;
+}
+
+// ============================================================================
+// Password Hashing
 // ============================================================================
 
 function hashPassword(password, salt) {
   if (!password) return '';
 
-  // Generate salt if not provided (for new passwords)
   if (!salt) {
     salt = Utilities.getUuid();
   }
 
-  // Combine password with salt
   const combined = password + salt;
-
-  // Use SHA-256 for secure hashing
   const digest = Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256,
     combined,
     Utilities.Charset.UTF_8
   );
 
-  // Convert to hexadecimal string
   const hash = digest.map(byte => {
     const unsignedByte = byte < 0 ? 256 + byte : byte;
     return unsignedByte.toString(16).padStart(2, '0');
   }).join('');
 
-  // Return hash and salt separated by colon
   return hash + ':' + salt;
 }
 
-// Add helper function to verify password
 function verifyPassword(password, storedHash) {
   if (!storedHash || !storedHash.includes(':')) {
-    // Old format (no salt) - backward compatibility
     return hashPassword(password).split(':')[0] === storedHash;
   }
 
@@ -54,6 +79,7 @@ function verifyPassword(password, storedHash) {
   const newHash = hashPassword(password, salt).split(':')[0];
   return hash === newHash;
 }
+
 function validateAndSanitize(input, type = 'text', maxLength = 200) {
   if (input === null || input === undefined) return null;
 
@@ -85,29 +111,20 @@ function validateAndSanitize(input, type = 'text', maxLength = 200) {
   return value;
 }
 
-
 // ============================================================================
 // Monthly Sheet Management
 // ============================================================================
 
-/**
- * Gets the attendance sheet name for a specific month
- * Format: Attendance_YYYY_MM (e.g., Attendance_2025_01)
- */
 function getAttendanceSheetName(yearMonth) {
   if (!yearMonth) {
     const now = new Date();
     yearMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   }
 
-  // Convert YYYY-MM to Attendance_YYYY_MM
   const parts = yearMonth.split('-');
   return `Attendance_${parts[0]}_${parts[1]}`;
 }
 
-/**
- * Gets or creates an attendance sheet for a specific month
- */
 function getOrCreateAttendanceSheet(yearMonth) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheetName = getAttendanceSheetName(yearMonth);
@@ -118,13 +135,11 @@ function getOrCreateAttendanceSheet(yearMonth) {
     Logger.log('📋 Creating new attendance sheet: ' + sheetName);
     sheet = ss.insertSheet(sheetName);
 
-    // Add header row
     sheet.appendRow([
       'UserID', 'Date', 'Status', 'WorkHours', 'OTHours', 'TotalHours',
       'Earned', 'Deduction', 'Details', 'Created'
     ]);
 
-    // Format header
     const headerRange = sheet.getRange(1, 1, 1, 10);
     headerRange.setFontWeight('bold');
     headerRange.setBackground('#4285f4');
@@ -142,17 +157,11 @@ function getOrCreateAttendanceSheet(yearMonth) {
   return sheet;
 }
 
-/**
- * Gets the month from a date string (YYYY-MM-DD -> YYYY-MM)
- */
 function getMonthFromDate(dateStr) {
   const parts = dateStr.split('-');
   return `${parts[0]}-${parts[1]}`;
 }
 
-/**
- * Lists all available attendance months
- */
 function getAvailableMonths() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
@@ -169,10 +178,8 @@ function getAvailableMonths() {
     }
   });
 
-  // Sort descending (newest first)
   months.sort((a, b) => b.localeCompare(a));
 
-  // Always include current month even if no records yet
   const now = new Date();
   const currentMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
   if (!months.includes(currentMonth)) {
@@ -185,61 +192,45 @@ function getAvailableMonths() {
 // ============================================================================
 // Main doGet Handler
 // ============================================================================
-// ============================================================================
-// Main doGet Handler
-// ============================================================================
+
 function doGet(e) {
   const path = e.parameter.path || '';
   const auth = e.parameter.authorization || '';
 
   Logger.log('=== doGet Request ===');
   Logger.log('Path: ' + path);
-  Logger.log('Auth header present: ' + (auth ? 'Yes' : 'No'));
 
   try {
-    // ===== PUBLIC ENDPOINTS (No Authentication Required) =====
-
     if (path === 'health') {
-      Logger.log('✅ Health check - returning success');
       return jsonResponse({ ok: true, message: 'Server is running' });
     }
 
-    // ===== PROTECTED ENDPOINTS (Authentication Required) =====
-    // Only check auth AFTER public endpoints
-
     if (!auth) {
-      Logger.log('❌ No authorization header provided');
       return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - টোকেন প্রয়োজন' }, 401);
     }
 
     const user = validateToken(auth);
     if (!user) {
-      Logger.log('❌ Token validation failed');
       return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - অবৈধ টোকেন' }, 401);
     }
 
     Logger.log('✅ Token valid for user: ' + user.id);
 
-    // Route to protected handlers
     if (path === 'profile') {
       return handleGetProfile(user);
     } else if (path.startsWith('attendance/stats')) {
-      const month = e.parameter.month;
-      return handleGetStats(user, month);
+      return handleGetStats(user, e.parameter.month);
     } else if (path.startsWith('attendance/history')) {
-      const month = e.parameter.month;
-      return handleGetHistory(user, month);
+      return handleGetHistory(user, e.parameter.month);
     } else if (path === 'attendance/months') {
       return handleGetAvailableMonths(user);
     }
 
-    Logger.log('❌ Unknown endpoint: ' + path);
     return jsonResponse({ ok: false, error: 'এন্ডপয়েন্ট খুঁজে পাওয়া যায়নি' }, 404);
 
   } catch (error) {
     Logger.log('❌ Error in doGet: ' + error.toString());
-    Logger.log(error.stack);
-
+    
     const userMessage = error.message.includes('সমস্ত') ||
                        error.message.includes('অবৈধ') ||
                        error.message.includes('ইনপুট')
@@ -253,44 +244,34 @@ function doGet(e) {
 // ============================================================================
 // Main doPost Handler
 // ============================================================================
+
 function doPost(e) {
   const path = e.parameter.path || '';
   const auth = e.parameter.authorization || '';
 
   Logger.log('=== doPost Request ===');
   Logger.log('Path: ' + path);
-  Logger.log('Auth header present: ' + (auth ? 'Yes' : 'No'));
 
   try {
-    // ===== PUBLIC ENDPOINTS (No Authentication Required) =====
-
     if (path === 'register') {
-      Logger.log('📝 Processing registration');
-      return handleRegister(e.parameter);  // ✅ RETURN here
+      return handleRegister(e.parameter);
     }
 
     if (path === 'login') {
-      Logger.log('🔐 Processing login');
-      return handleLogin(e.parameter);  // ✅ RETURN here
+      return handleLogin(e.parameter);
     }
 
-    // ===== PROTECTED ENDPOINTS (Authentication Required) =====
-    // Only check auth AFTER public endpoints
-
     if (!auth) {
-      Logger.log('❌ No authorization header provided');
       return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - টোকেন প্রয়োজন' }, 401);
     }
 
     const user = validateToken(auth);
     if (!user) {
-      Logger.log('❌ Token validation failed');
       return jsonResponse({ ok: false, error: 'অননুমোদিত অ্যাক্সেস - অবৈধ টোকেন' }, 401);
     }
 
     Logger.log('✅ Token valid for user: ' + user.id);
 
-    // Route to protected handlers
     if (path === 'logout') {
       return handleLogout(user, auth);
     } else if (path === 'profile/setup') {
@@ -307,12 +288,10 @@ function doPost(e) {
       return handleDeleteAttendance(user, e.parameter);
     }
 
-    Logger.log('❌ Unknown endpoint: ' + path);
     return jsonResponse({ ok: false, error: 'এন্ডপয়েন্ট খুঁজে পাওয়া যায়নি' }, 404);
 
   } catch (error) {
     Logger.log('❌ Error in doPost: ' + error.toString());
-    Logger.log(error.stack);
 
     const userMessage = error.message.includes('সমস্ত') ||
                        error.message.includes('অবৈধ') ||
@@ -324,12 +303,7 @@ function doPost(e) {
   }
 }
 
-// ============================================================================
-// OPTIONS Handler for CORS Preflight
-// ============================================================================
-
 function doOptions(e) {
-  // Handle CORS preflight requests
   return ContentService.createTextOutput('')
     .setMimeType(ContentService.MimeType.TEXT);
 }
@@ -346,8 +320,6 @@ function handleRegister(params) {
     name = validateAndSanitize(params.name, 'text', 100);
     password = params.password;
 
-    Logger.log('📝 Register attempt for ID: ' + id);
-
     if (!id || !name || !password) {
       return jsonResponse({ ok: false, error: 'সমস্ত ফিল্ড পূরণ করুন' });
     }
@@ -355,7 +327,6 @@ function handleRegister(params) {
     return jsonResponse({ ok: false, error: error.message });
   }
 
-  // Validate password length
   if (password.length < 6) {
     return jsonResponse({ ok: false, error: 'পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে' });
   }
@@ -368,7 +339,6 @@ function handleRegister(params) {
     usersSheet.appendRow(['ID', 'Name', 'Password', 'Created', 'LastLogin']);
   }
 
-  // Check if user exists
   const data = usersSheet.getDataRange().getValues();
   for (let i = 1; i < data.length; i++) {
     if (String(data[i][0]).trim() === String(id).trim()) {
@@ -376,23 +346,16 @@ function handleRegister(params) {
     }
   }
 
-  // Hash password securely WITH SALT
   const hashedPassword = hashPassword(password);
-
-  // Add user
   usersSheet.appendRow([id, name, hashedPassword, new Date(), '']);
   Logger.log('✅ User created');
 
-  // Create token
   const token = createToken(id);
-
   return jsonResponse({ ok: true, token: token });
 }
 
 function handleLogin(params) {
   const { id, password } = params;
-
-  Logger.log('🔑 Login attempt for ID: ' + id);
 
   if (!id || !password) {
     return jsonResponse({ ok: false, error: 'সমস্ত ফিল্ড পূরণ করুন' });
@@ -407,21 +370,15 @@ function handleLogin(params) {
 
   const data = usersSheet.getDataRange().getValues();
 
-  // Search for user
   for (let i = 1; i < data.length; i++) {
     const storedId = String(data[i][0]).trim();
     const storedHash = String(data[i][2]).trim();
 
     if (storedId === String(id).trim()) {
-      // Use new verification function
       if (verifyPassword(password, storedHash)) {
-        // Update last login
         usersSheet.getRange(i + 1, 5).setValue(new Date());
-
-        // Create token
         const token = createToken(id);
         Logger.log('✅ Login successful');
-
         return jsonResponse({ ok: true, token: token });
       } else {
         return jsonResponse({ ok: false, error: 'ভুল আইডি বা পাসওয়ার্ড' });
@@ -434,7 +391,6 @@ function handleLogin(params) {
 
 function handleLogout(user, authHeader) {
   const token = authHeader.substring(7);
-
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sessionsSheet = ss.getSheetByName(SHEETS.SESSIONS);
 
@@ -456,8 +412,6 @@ function handleLogout(user, authHeader) {
 // ============================================================================
 
 function handleGetProfile(user) {
-  Logger.log('📋 Getting profile for: ' + user.id);
-
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let profilesSheet = ss.getSheetByName(SHEETS.PROFILES);
 
@@ -487,12 +441,17 @@ function handleGetProfile(user) {
           grade: data[i][6] || '',
           basicSalary: Number(data[i][7]) || 0,
           houseRent: Number(data[i][8]) || 0,
-          medicalTransport: Number(data[i][9]) || 0,
-          otRate: Number(data[i][10]) || 0,
-          presentBonus: Number(data[i][11]) || 0,
-          nightAllowance: Number(data[i][12]) || 0,
-          tiffinBill: Number(data[i][13]) || 0,
-          profileImage: data[i][14] || '',
+          // ✅ FIXED: Return separate fields
+          medical: Number(data[i][9]) || 750,
+          transport: Number(data[i][10]) || 450,
+          food: Number(data[i][11]) || 1250,
+          // ✅ ALSO provide combined value for backward compatibility
+          medicalTransport: (Number(data[i][9]) || 750) + (Number(data[i][10]) || 450) + (Number(data[i][11]) || 1250),
+          otRate: Number(data[i][12]) || 0,
+          presentBonus: Number(data[i][13]) || 0,
+          nightAllowance: Number(data[i][14]) || 0,
+          tiffinBill: Number(data[i][15]) || 0,
+          profileImage: data[i][16] || '',
           profileComplete: true
         }
       });
@@ -509,18 +468,16 @@ function handleGetProfile(user) {
 }
 
 function handleProfileSetup(user, params) {
-  Logger.log('⚙️ Setting up profile for: ' + user.id);
-
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let profilesSheet = ss.getSheetByName(SHEETS.PROFILES);
 
   if (!profilesSheet) {
     profilesSheet = ss.insertSheet(SHEETS.PROFILES);
     profilesSheet.appendRow([
-      'ID', 'Name', 'Company', 'CardNo', 'Section', 'Designation', 'Grade',
-      'BasicSalary', 'HouseRent', 'MedicalTransport', 'OTRate',
-      'PresentBonus', 'NightAllowance', 'TiffinBill', 'ProfileImage', 'Updated'
-    ]);
+        'ID', 'Name', 'Company', 'CardNo', 'Section', 'Designation', 'Grade',
+        'BasicSalary', 'HouseRent', 'Medical', 'Transport', 'Food', 'OTRate',
+        'PresentBonus', 'NightAllowance', 'TiffinBill', 'ProfileImage', 'Updated'
+      ]);
   }
 
   const data = profilesSheet.getDataRange().getValues();
@@ -534,23 +491,25 @@ function handleProfileSetup(user, params) {
   }
 
   const profileData = [
-    user.id,
-    params.name || '',
-    params.company || '',
-    params.cardNo || '',
-    params.section || '',
-    params.designation || '',
-    params.grade || '',
-    Number(params.basicSalary) || 0,
-    Number(params.houseRent) || 0,
-    Number(params.medicalTransport) || 0,
-    Number(params.otRate) || 0,
-    Number(params.presentBonus) || 0,
-    Number(params.nightAllowance) || 0,
-    Number(params.tiffinBill) || 0,
-    params.profileImage || '',
-    new Date()
-  ];
+        user.id,
+        params.name || '',
+        params.company || '',
+        params.cardNo || '',
+        params.section || '',
+        params.designation || '',
+        params.grade || '',
+        Number(params.basicSalary) || 0,
+        Number(params.houseRent) || 0,
+        Number(params.medical) || 750,
+        Number(params.transport) || 450,
+        Number(params.food) || 1250,
+        Number(params.otRate) || 0,
+        Number(params.presentBonus) || 0,
+        Number(params.nightAllowance) || 0,
+        Number(params.tiffinBill) || 0,
+        params.profileImage || '',
+        new Date()
+    ];
 
   if (rowIndex > 0) {
     profilesSheet.getRange(rowIndex, 1, 1, profileData.length).setValues([profileData]);
@@ -570,8 +529,6 @@ function handleProfileSetup(user, params) {
 function handlePresent(user, params) {
   const { date, otHours, isFriday, workHours } = params;
 
-  Logger.log('✓ Recording present for ' + user.id + ' on ' + date);
-
   if (!date) {
     return jsonResponse({ ok: false, error: 'তারিখ প্রয়োজন' });
   }
@@ -585,30 +542,26 @@ function handlePresent(user, params) {
   const work = Number(workHours) || 8;
   const isFri = String(isFriday) === 'true';
 
-  // Calculate daily salary (gross salary / 30)
-  const dailySalary = (profile.basicSalary + profile.houseRent + profile.medicalTransport) / 30;
+  const dailySalary = (profile.basicSalary + profile.houseRent + profile.medical + profile.transport + profile.food) / 30;
 
   let earned = 0;
 
   if (isFri) {
-    // Friday: Only OT earnings + bonus
-    earned = (ot * profile.otRate) + profile.presentBonus;
+    // Friday: Only OT (NO present bonus daily)
+    earned = (ot * profile.otRate);
   } else {
-    // Regular day: Daily salary + OT + bonus
-    earned = dailySalary + (ot * profile.otRate) + profile.presentBonus;
+    // Regular day: Daily Salary + OT (NO present bonus daily)
+    earned = dailySalary + (ot * profile.otRate);
   }
 
-  // Add tiffin bill if 5+ hours OT
   if (ot >= 5) {
     earned += profile.tiffinBill;
   }
 
-  // Add night allowance if 7+ hours OT
   if (ot >= 7) {
     earned += profile.nightAllowance;
   }
 
-  // Save record
   saveAttendanceRecord({
     userId: user.id,
     date: date,
@@ -636,7 +589,6 @@ function handleAbsent(user, params) {
     return jsonResponse({ ok: false, error: 'প্রোফাইল পাওয়া যায়নি' });
   }
 
-  // Deduct only basic salary per day
   const dailyDeduction = profile.basicSalary / 30;
 
   saveAttendanceRecord({
@@ -697,86 +649,68 @@ function handleLeave(user, params) {
 
   return jsonResponse({ ok: true, message: 'ছুটি রেকর্ড হয়েছে' });
 }
+
 function handleDeleteAttendance(user, params) {
   const { date } = params;
-
-  Logger.log('🗑️ Deleting attendance record for ' + user.id + ' on ' + date);
 
   if (!date) {
     return jsonResponse({ ok: false, error: 'তারিখ প্রয়োজন' });
   }
 
   try {
-    const month = getMonthFromDate(date);
+    const cleanDate = normalizeDateToString(date);
+    
+    if (!cleanDate) {
+      return jsonResponse({ ok: false, error: 'অবৈধ তারিখ ফরম্যাট' });
+    }
+
+    const month = getMonthFromDate(cleanDate);
     const ss = SpreadsheetApp.getActiveSpreadsheet();
     const sheetName = getAttendanceSheetName(month);
     const attendanceSheet = ss.getSheetByName(sheetName);
 
     if (!attendanceSheet) {
-      Logger.log('❌ Sheet not found: ' + sheetName);
       return jsonResponse({ ok: false, error: 'এই মাসের কোন রেকর্ড নেই' });
     }
 
     const data = attendanceSheet.getDataRange().getValues();
-    const rowsToDelete = []; // Collect ALL matching rows (handles duplicates)
+    const rowsToDelete = [];
+    const cleanUserId = String(user.id).trim().toLowerCase();
 
-      // Clean the target date for comparison
-      const cleanTargetDate = String(date).trim().split('T')[0].split(' ')[0];
-      Logger.log('🔍 Looking for record(s) with UserID: ' + user.id + ' and Date: ' + cleanTargetDate);
+    for (let i = 1; i < data.length; i++) {
+      const rowUserId = String(data[i][0]).trim().toLowerCase();
+      const rowDateStr = normalizeDateToString(data[i][1]);
 
-      // Find ALL matching records (not just the first one)
-      for (let i = 1; i < data.length; i++) {
-        const rowUserId = String(data[i][0]).trim();
-        const rowDate = data[i][1];
-
-       let rowDateStr = '';
-        if (rowDate instanceof Date) {
-          // Use UTC to avoid timezone shifts
-          const year = rowDate.getUTCFullYear();
-          const month = String(rowDate.getUTCMonth() + 1).padStart(2, '0');
-          const day = String(rowDate.getUTCDate()).padStart(2, '0');
-          rowDateStr = `${year}-${month}-${day}`;
-        } else {
-          const cleanDate = String(rowDate).trim().split('T')[0].split(' ')[0];
-          rowDateStr = cleanDate;
-        }
-
-        Logger.log('  📅 Comparing: Row date "' + rowDateStr + '" with target "' + cleanTargetDate + '"');
-
-        // Match both user and date (case-insensitive for user)
-        if (rowUserId.toLowerCase() === String(user.id).trim().toLowerCase() &&
-            rowDateStr === cleanTargetDate) {
-          rowsToDelete.push(i + 1); // Sheet rows are 1-indexed
-          Logger.log('✅ Found matching record at row: ' + (i + 1));
-        }
+      if (rowUserId === cleanUserId && rowDateStr === cleanDate) {
+        rowsToDelete.push(i + 1);
       }
+    }
 
     if (rowsToDelete.length === 0) {
-      Logger.log('❌ No matching record found');
       return jsonResponse({ ok: false, error: 'রেকর্ড খুঁজে পাওয়া যায়নি' });
     }
 
-    // Delete all matching rows (from bottom to top to avoid index shifting)
-    rowsToDelete.sort((a, b) => b - a); // Sort descending
-
-    Logger.log('🗑️ Deleting ' + rowsToDelete.length + ' record(s)');
-
+    rowsToDelete.sort((a, b) => b - a);
+    
     rowsToDelete.forEach(rowNum => {
       attendanceSheet.deleteRow(rowNum);
-      Logger.log('✅ Deleted row: ' + rowNum);
     });
 
-    const message = rowsToDelete.length > 1
-      ? 'রেকর্ড সফলভাবে মুছে ফেলা হয়েছে (' + rowsToDelete.length + 'টি ডুপ্লিকেট)'
-      : 'রেকর্ড সফলভাবে মুছে ফেলা হয়েছে';
+    const message = rowsToDelete.length > 1 
+      ? 'রেকর্ড মুছে ফেলা হয়েছে (' + rowsToDelete.length + 'টি)'
+      : 'রেকর্ড মুছে ফেলা হয়েছে';
 
     return jsonResponse({ ok: true, message: message });
 
   } catch (error) {
     Logger.log('❌ Delete error: ' + error.toString());
-    return jsonResponse({ ok: false, error: 'রেকর্ড মুছতে সমস্যা হয়েছে' });
+    return jsonResponse({ 
+      ok: false, 
+      error: 'রেকর্ড মুছতে সমস্যা হয়েছে: ' + error.message 
+    });
   }
 }
+
 // ============================================================================
 // Stats & History Handlers
 // ============================================================================
@@ -804,6 +738,9 @@ function handleGetStats(user, month) {
     }
   });
 
+  // Calculate present bonus: Full amount if no absents, 0 if any absent
+  const presentBonus = (absentDays === 0 && profile) ? profile.presentBonus : 0;
+
   return jsonResponse({
     ok: true,
     stats: {
@@ -811,14 +748,14 @@ function handleGetStats(user, month) {
       absentDays: absentDays,
       totalOTHours: totalOTHours,
       totalOTAmount: totalOTAmount,
-      totalDeduction: totalDeduction
+      totalDeduction: totalDeduction,
+      presentBonus: presentBonus  // NEW: Monthly bonus
     }
   });
 }
 
 function handleGetHistory(user, month) {
   const records = getAttendanceRecords(user.id, month);
-
   return jsonResponse({
     ok: true,
     records: records
@@ -827,7 +764,6 @@ function handleGetHistory(user, month) {
 
 function handleGetAvailableMonths(user) {
   const months = getAvailableMonths();
-
   return jsonResponse({
     ok: true,
     months: months
@@ -842,37 +778,25 @@ function saveAttendanceRecord(record) {
   const month = getMonthFromDate(record.date);
   const attendanceSheet = getOrCreateAttendanceSheet(month);
 
+  const inputDateStr = normalizeDateToString(record.date);
+  
+  if (!inputDateStr) {
+    throw new Error('অবৈধ তারিখ ফরম্যাট');
+  }
+  
+  const inputUserId = String(record.userId).trim().toLowerCase();
   const data = attendanceSheet.getDataRange().getValues();
-
-  // Convert input date to consistent format (YYYY-MM-DD) for comparison
-  const inputDateStr = String(record.date).trim().split('T')[0];
-
-  // Check if record exists - IMPROVED TIMEZONE HANDLING
+  
+  // Check for existing record
   for (let i = 1; i < data.length; i++) {
-    const rowUserId = String(data[i][0]).trim();
-    const rowDate = data[i][1];
-
-    // Normalize date for comparison - handle both Date objects and strings
-    let rowDateStr = '';
-    if (rowDate instanceof Date) {
-      // Use UTC to avoid timezone shifts
-      const year = rowDate.getUTCFullYear();
-      const month = String(rowDate.getUTCMonth() + 1).padStart(2, '0');
-      const day = String(rowDate.getUTCDate()).padStart(2, '0');
-      rowDateStr = `${year}-${month}-${day}`;
-    } else {
-      const cleanDate = String(rowDate).trim().split('T')[0].split(' ')[0];
-      rowDateStr = cleanDate;
-    }
-
-    // If same user AND same date found, UPDATE instead of creating duplicate
-    if (rowUserId.toLowerCase() === String(record.userId).trim().toLowerCase() &&
-        rowDateStr === inputDateStr) {
-
-      Logger.log('⚠️ Record already exists for ' + inputDateStr + ', UPDATING instead of creating duplicate');
-
-      // Update the existing record
-      attendanceSheet.getRange(i + 1, 3, 1, 8).setValues([[
+    const rowUserId = String(data[i][0]).trim().toLowerCase();
+    const rowDateStr = normalizeDateToString(data[i][1]);
+    
+    if (rowUserId === inputUserId && rowDateStr === inputDateStr) {
+      Logger.log('🔄 Updating existing record at row ' + (i + 1));
+      
+      attendanceSheet.getRange(i + 1, 2, 1, 9).setValues([[
+        inputDateStr,
         record.status,
         record.workHours,
         record.otHours,
@@ -882,13 +806,12 @@ function saveAttendanceRecord(record) {
         record.details,
         new Date()
       ]]);
-      Logger.log('✅ Record UPDATED at row ' + (i + 1));
-      return;
+      
+      return { action: 'updated', row: i + 1 };
     }
   }
 
-  // Only reached if NO duplicate found - create new record
-  // Store date as STRING in YYYY-MM-DD format to avoid timezone conversion
+  // Create new record
   attendanceSheet.appendRow([
     record.userId,
     inputDateStr,
@@ -901,7 +824,9 @@ function saveAttendanceRecord(record) {
     record.details,
     new Date()
   ]);
-  Logger.log('✅ New record created for ' + inputDateStr);
+  
+  Logger.log('✅ New record created');
+  return { action: 'created', row: data.length };
 }
 
 function getAttendanceRecords(userId, month) {
@@ -920,35 +845,37 @@ function getAttendanceRecords(userId, month) {
 
   const data = attendanceSheet.getDataRange().getValues();
   const records = [];
+  const cleanUserId = String(userId).trim().toLowerCase();
 
   for (let i = 1; i < data.length; i++) {
-    if (String(data[i][0]).trim() === String(userId).trim()) {
+    const rowUserId = String(data[i][0]).trim().toLowerCase();
+    
+    if (rowUserId === cleanUserId) {
       let dateValue = data[i][1];
-
-      // If it's a Date object, format it consistently
+      
+      // ✅ Use Asia/Dhaka timezone
       if (dateValue instanceof Date) {
-        dateValue = Utilities.formatDate(dateValue, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      } else {
-        // Ensure string is in clean format
+        dateValue = Utilities.formatDate(dateValue, 'Asia/Dhaka', 'yyyy-MM-dd');
+      } else if (typeof dateValue === 'string') {
         dateValue = String(dateValue).trim().split('T')[0].split(' ')[0];
       }
-
-      records.push({
-        date: dateValue, // Now always YYYY-MM-DD string
-        status: data[i][2],
-        workHours: Number(data[i][3]) || 0,
-        otHours: Number(data[i][4]) || 0,
-        totalHours: Number(data[i][5]) || 0,
-        earned: Number(data[i][6]) || 0,
-        deduction: Number(data[i][7]) || 0,
-        details: data[i][8] || ''
-      });
+      
+      if (dateValue) {
+        records.push({
+          date: dateValue,
+          status: data[i][2],
+          workHours: Number(data[i][3]) || 0,
+          otHours: Number(data[i][4]) || 0,
+          totalHours: Number(data[i][5]) || 0,
+          earned: Number(data[i][6]) || 0,
+          deduction: Number(data[i][7]) || 0,
+          details: data[i][8] || ''
+        });
+      }
     }
   }
 
-  // Sort by date descending
-  records.sort((a, b) => new Date(b.date) - new Date(a.date));
-
+  records.sort((a, b) => b.date.localeCompare(a.date));
   return records;
 }
 
@@ -968,11 +895,13 @@ function getProfile(userId) {
         id: userId,
         basicSalary: Number(data[i][7]) || 0,
         houseRent: Number(data[i][8]) || 0,
-        medicalTransport: Number(data[i][9]) || 0,
-        otRate: Number(data[i][10]) || 0,
-        presentBonus: Number(data[i][11]) || 0,
-        nightAllowance: Number(data[i][12]) || 0,
-        tiffinBill: Number(data[i][13]) || 0
+        medical: Number(data[i][9]) || 750,
+        transport: Number(data[i][10]) || 450,
+        food: Number(data[i][11]) || 1250,
+        otRate: Number(data[i][12]) || 0,
+        presentBonus: Number(data[i][13]) || 0,
+        nightAllowance: Number(data[i][14]) || 0,
+        tiffinBill: Number(data[i][15]) || 0
       };
     }
   }
@@ -986,7 +915,7 @@ function getProfile(userId) {
 
 function createToken(userId) {
   const timestamp = new Date().getTime();
-  const randomPart = Utilities.getUuid(); // More secure random
+  const randomPart = Utilities.getUuid();
   const tokenData = userId + ':' + timestamp + ':' + randomPart;
   const token = Utilities.base64Encode(tokenData);
 
@@ -998,7 +927,6 @@ function createToken(userId) {
     sessionsSheet.appendRow(['Token', 'UserID', 'Created', 'Expires', 'LastUsed']);
   }
 
-  // Reduced to 24 hours for better security
   const expires = new Date(timestamp + (24 * 60 * 60 * 1000));
   sessionsSheet.appendRow([token, userId, new Date(), expires, new Date()]);
 
@@ -1048,98 +976,81 @@ function validateToken(authHeader) {
 function jsonResponse(data, status = 200) {
   const output = ContentService.createTextOutput(JSON.stringify(data));
   output.setMimeType(ContentService.MimeType.JSON);
-
-  // Note: CORS headers are automatically handled by Google Apps Script web apps
-  // No need to manually set headers - they're added automatically
-
   return output;
 }
 
+// ============================================================================
+// UTILITY FUNCTIONS - Run these manually when needed
+// ============================================================================
 
 /**
- * CLEANUP FUNCTION - Run this ONCE to remove existing duplicate records
- * After running once, you can delete this function
+ * ✅ CLEANUP #1: Remove duplicate records
+ * Run this ONCE to clean up existing duplicates
  */
 function cleanupDuplicateRecords() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheets = ss.getSheets();
-
+  
   let totalDuplicatesRemoved = 0;
-
+  
   Logger.log('🧹 Starting cleanup of duplicate records...');
-
-  // Process each attendance sheet
+  
   sheets.forEach(sheet => {
     const sheetName = sheet.getName();
-
-    // Only process attendance sheets (skip Users, Profiles, Sessions)
+    
     if (!sheetName.startsWith('Attendance_')) {
       return;
     }
-
+    
     Logger.log('🔍 Checking sheet: ' + sheetName);
-
+    
     const data = sheet.getDataRange().getValues();
     if (data.length <= 1) {
       Logger.log('  ℹ️ Sheet is empty or has only headers, skipping');
       return;
     }
-
-    // Track seen records: userId+date -> row index
+    
     const seenRecords = new Map();
     const rowsToDelete = [];
-
-    // Scan all records (skip header row)
+    
     for (let i = 1; i < data.length; i++) {
       const userId = String(data[i][0]).trim().toLowerCase();
-      const rawDate = data[i][1];
-
-      // Normalize date
-      let dateStr = '';
-      if (rawDate instanceof Date) {
-        dateStr = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'yyyy-MM-dd');
-      } else {
-        dateStr = String(rawDate).trim().split(' ')[0];
-      }
-
+      const dateStr = normalizeDateToString(data[i][1]);
+      
+      if (!dateStr) continue;
+      
       const key = userId + '|' + dateStr;
-
+      
       if (seenRecords.has(key)) {
-        // Duplicate found! Mark for deletion
-        const status = data[i][2] || 'unknown';
-        Logger.log('  ⚠️ Duplicate: UserID=' + userId + ', Date=' + dateStr + ', Status=' + status + ' at row ' + (i + 1));
-        rowsToDelete.push(i + 1); // Sheet rows are 1-indexed
+        Logger.log('  ⚠️ Duplicate: UserID=' + userId + ', Date=' + dateStr + ' at row ' + (i + 1));
+        rowsToDelete.push(i + 1);
       } else {
-        // First occurrence, remember it
         seenRecords.set(key, i + 1);
       }
     }
-
-    // Delete duplicates (must delete from bottom to top to avoid index shifting)
+    
     if (rowsToDelete.length > 0) {
       Logger.log('  🗑️ Deleting ' + rowsToDelete.length + ' duplicate(s) from ' + sheetName);
-
-      // Sort in descending order (delete from bottom up)
+      
       rowsToDelete.sort((a, b) => b - a);
-
+      
       rowsToDelete.forEach(rowNum => {
         sheet.deleteRow(rowNum);
         totalDuplicatesRemoved++;
       });
-
+      
       Logger.log('  ✅ Cleaned up ' + sheetName);
     } else {
       Logger.log('  ✅ No duplicates found in ' + sheetName);
     }
   });
-
+  
   Logger.log('');
   Logger.log('════════════════════════════════════════');
   Logger.log('🎉 Cleanup Complete!');
   Logger.log('📊 Total duplicates removed: ' + totalDuplicatesRemoved);
   Logger.log('════════════════════════════════════════');
-
-  // Show result to user
+  
   if (totalDuplicatesRemoved > 0) {
     SpreadsheetApp.getUi().alert(
       '✅ Cleanup Successful!\n\n' +
@@ -1152,9 +1063,197 @@ function cleanupDuplicateRecords() {
       'Your attendance records are clean.'
     );
   }
-
+  
   return {
     success: true,
     duplicatesRemoved: totalDuplicatesRemoved
   };
+}
+
+/**
+ * ✅ CLEANUP #2: Fix timezone for all existing dates
+ * Run this ONCE to normalize all dates to Asia/Dhaka timezone
+ */
+function fixTimezoneForAllDates() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  
+  let totalFixed = 0;
+  
+  Logger.log('🌍 Starting timezone fix for all attendance sheets...');
+  
+  sheets.forEach(sheet => {
+    const sheetName = sheet.getName();
+    
+    if (!sheetName.startsWith('Attendance_')) {
+      return;
+    }
+    
+    Logger.log('🔍 Processing: ' + sheetName);
+    
+    const data = sheet.getDataRange().getValues();
+    
+    for (let i = 1; i < data.length; i++) {
+      const currentDate = data[i][1];
+      
+      if (currentDate instanceof Date) {
+        const fixedDate = Utilities.formatDate(currentDate, 'Asia/Dhaka', 'yyyy-MM-dd');
+        
+        if (String(currentDate) !== fixedDate) {
+          sheet.getRange(i + 1, 2).setValue(fixedDate);
+          totalFixed++;
+          Logger.log('  ✅ Fixed row ' + (i + 1) + ': ' + currentDate + ' -> ' + fixedDate);
+        }
+      } else if (typeof currentDate === 'string') {
+        let cleanDate = String(currentDate).trim();
+        if (cleanDate.includes('T')) {
+          cleanDate = cleanDate.split('T')[0];
+        }
+        if (cleanDate.includes(' ')) {
+          cleanDate = cleanDate.split(' ')[0];
+        }
+        
+        if (cleanDate !== String(currentDate)) {
+          sheet.getRange(i + 1, 2).setValue(cleanDate);
+          totalFixed++;
+          Logger.log('  ✅ Fixed row ' + (i + 1) + ': ' + currentDate + ' -> ' + cleanDate);
+        }
+      }
+    }
+  });
+  
+  Logger.log('');
+  Logger.log('════════════════════════════════════════');
+  Logger.log('✅ Timezone Fix Complete!');
+  Logger.log('📊 Total dates fixed: ' + totalFixed);
+  Logger.log('════════════════════════════════════════');
+  
+  SpreadsheetApp.getUi().alert(
+    '✅ Timezone Fix Complete!\n\n' +
+    'Fixed ' + totalFixed + ' date(s).\n\n' +
+    'All dates now use Asia/Dhaka timezone.'
+  );
+  
+  return {
+    success: true,
+    datesFixed: totalFixed
+  };
+}
+
+/**
+ * ✅ DIAGNOSTIC: Debug delete issues
+ * Replace TEST_USER_ID and TEST_DATE with your actual values
+ */
+function diagnoseDeleteIssue() {
+  const TEST_USER_ID = '627062';  // ⚠️ CHANGE THIS to your user ID
+  const TEST_DATE = '2025-11-23';  // ⚠️ CHANGE THIS to the date you're testing
+  
+  Logger.log('🔍 Diagnosing delete issue for UserID: ' + TEST_USER_ID + ', Date: ' + TEST_DATE);
+  
+  const month = getMonthFromDate(TEST_DATE);
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheetName = getAttendanceSheetName(month);
+  const sheet = ss.getSheetByName(sheetName);
+  
+  if (!sheet) {
+    Logger.log('❌ Sheet not found: ' + sheetName);
+    return;
+  }
+  
+  const data = sheet.getDataRange().getValues();
+  Logger.log('📊 Total rows: ' + (data.length - 1));
+  
+  const cleanUserId = String(TEST_USER_ID).trim().toLowerCase();
+  const cleanDate = normalizeDateToString(TEST_DATE);
+  
+  Logger.log('🔍 Looking for: UserID=' + cleanUserId + ', Date=' + cleanDate);
+  Logger.log('');
+  
+  for (let i = 1; i < data.length; i++) {
+    const rowUserId = String(data[i][0]).trim().toLowerCase();
+    const rowDate = normalizeDateToString(data[i][1]);
+    
+    Logger.log('Row ' + (i + 1) + ':');
+    Logger.log('  - UserID: ' + rowUserId + ' (match: ' + (rowUserId === cleanUserId) + ')');
+    Logger.log('  - Date: ' + rowDate + ' (match: ' + (rowDate === cleanDate) + ')');
+    Logger.log('  - Status: ' + data[i][2]);
+    Logger.log('');
+  }
+  
+  SpreadsheetApp.getUi().alert(
+    'Diagnostic Complete!\n\n' +
+    'Check the Execution log (View > Logs) for detailed results.'
+  );
+}
+
+/**
+ * ✅ TEST: Verify date normalization works correctly
+ */
+function testDateNormalization() {
+  Logger.log('=== Testing Date Normalization ===');
+  
+  const testCases = [
+    '2025-11-23',
+    '2025-11-23T10:30:00',
+    '2025-11-23 10:30:00',
+    new Date(2025, 10, 23), // November 23, 2025
+  ];
+  
+  testCases.forEach(testDate => {
+    const normalized = normalizeDateToString(testDate);
+    Logger.log('Input: ' + testDate + ' -> Output: ' + normalized);
+  });
+  
+  Logger.log('=== Test Complete ===');
+  
+  SpreadsheetApp.getUi().alert(
+    'Test Complete!\n\n' +
+    'Check the Execution log (View > Logs) for results.'
+  );
+}
+
+/**
+ * ✅ VIEW ALL RECORDS: See all attendance records for debugging
+ */
+function viewAllAttendanceRecords() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheets = ss.getSheets();
+  
+  Logger.log('=== ALL ATTENDANCE RECORDS ===');
+  
+  sheets.forEach(sheet => {
+    const sheetName = sheet.getName();
+    
+    if (!sheetName.startsWith('Attendance_')) {
+      return;
+    }
+    
+    Logger.log('');
+    Logger.log('📋 Sheet: ' + sheetName);
+    Logger.log('─'.repeat(50));
+    
+    const data = sheet.getDataRange().getValues();
+    
+    if (data.length <= 1) {
+      Logger.log('  (empty)');
+      return;
+    }
+    
+    for (let i = 1; i < data.length; i++) {
+      const userId = data[i][0];
+      const rawDate = data[i][1];
+      const normalizedDate = normalizeDateToString(rawDate);
+      const status = data[i][2];
+      
+      Logger.log('Row ' + (i + 1) + ': UserID=' + userId + ', Date=' + normalizedDate + ' (' + typeof rawDate + '), Status=' + status);
+    }
+  });
+  
+  Logger.log('');
+  Logger.log('=== END OF RECORDS ===');
+  
+  SpreadsheetApp.getUi().alert(
+    'Records Listed!\n\n' +
+    'Check the Execution log (View > Logs) to see all records.'
+  );
 }
