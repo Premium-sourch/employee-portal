@@ -1101,36 +1101,51 @@ function updateProfileView() {
     }
 }
 
+// ============================================================================
+// REPLACE the loadMonthlyStats function in your script.js with this version
+// ============================================================================
+
 async function loadMonthlyStats() {
     try {
         const selectedMonth = document.getElementById('history-month-select').value || getCurrentMonth();
         const data = await apiRequest(`attendance/stats?month=${selectedMonth}`);
         const stats = data.stats;
 
+        // ✅ BASE COMPONENTS
         const grossSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
                            (currentUser.profile.medical || 750) +
                            (currentUser.profile.transport || 450) +
                            (currentUser.profile.food || 1250);
 
-        // ✅ FIXED: Use monthly present bonus from backend (not daily calculation)
+        // ✅ MONTHLY PRESENT BONUS (from backend)
         const monthlyPresentBonus = stats.presentBonus || 0;
-        const netAfterDeduction = grossSalary - stats.totalDeduction;
-        const totalSalary = netAfterDeduction + monthlyPresentBonus;
 
-        // Display logic
+        // ✅ NET AFTER DEDUCTION
+        const netAfterDeduction = grossSalary - stats.totalDeduction;
+
+        // ✅ TOTAL SALARY CALCULATION
+        // Formula: (Gross - Deduction) + OT Amount + Present Bonus
+        const totalSalary = netAfterDeduction + stats.totalOTAmount + monthlyPresentBonus;
+
+        // ✅ DISPLAY FORMAT
+        // Combine Gross + OT first, then show bonus separately
         let salaryDisplay;
+        
+        const grossPlusOT = netAfterDeduction + stats.totalOTAmount;
+
         if (stats.absentDays > 0) {
-            // Has absents: Show (Gross - Deduction) + ৳0 = Total
-            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
+            // HAS ABSENTS: Show (Net + OT) + ৳0 = Total
+            salaryDisplay = `${formatCurrency(grossPlusOT)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
         } else if (monthlyPresentBonus > 0) {
-            // No absents: Show Gross + Bonus = Total
-            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(monthlyPresentBonus)} = ${formatCurrency(totalSalary)}`;
+            // NO ABSENTS + HAS BONUS: Show (Gross + OT) + Bonus = Total
+            salaryDisplay = `${formatCurrency(grossPlusOT)} + ${formatCurrency(monthlyPresentBonus)} = ${formatCurrency(totalSalary)}`;
         } else {
-            // No bonus set
-            salaryDisplay = formatCurrency(totalSalary);
+            // NO ABSENTS + NO BONUS: Just show (Gross + OT)
+            salaryDisplay = formatCurrency(grossPlusOT);
         }
 
+        // Update UI
         document.getElementById('stat-total-salary').textContent = salaryDisplay;
         document.getElementById('stat-total-ot').textContent = formatNumber(stats.totalOTHours, 1) + 'ঘন্টা';
         document.getElementById('stat-ot-amount').textContent = formatCurrency(stats.totalOTAmount);
