@@ -1108,33 +1108,27 @@ async function loadMonthlyStats() {
         const data = await apiRequest(`attendance/stats?month=${selectedMonth}`);
         const stats = data.stats;
 
-     // ✅ FIXED: Calculate base gross salary (per month)
         const grossSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
                            (currentUser.profile.medical || 750) +
                            (currentUser.profile.transport || 450) +
                            (currentUser.profile.food || 1250);
 
-        // Calculate present bonus (presentBonus × presentDays)
-        const totalPresentBonus = (currentUser.profile.presentBonus || 0) * stats.presentDays;
-
-        // If there are absent days, deduct from gross salary
+        // ✅ FIXED: Use monthly present bonus from backend (not daily calculation)
+        const monthlyPresentBonus = stats.presentBonus || 0;
         const netAfterDeduction = grossSalary - stats.totalDeduction;
+        const totalSalary = netAfterDeduction + monthlyPresentBonus;
 
-        // Total salary = (gross - deductions) + (present bonus × days)
-        const totalSalary = netAfterDeduction + totalPresentBonus;
-
-        // Display format: Gross ± Deductions + Bonus = Total
+        // Display logic
         let salaryDisplay;
-
         if (stats.absentDays > 0) {
-            // Show: (Gross - Deduction) + Bonus = Total
-            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(totalPresentBonus)} = ${formatCurrency(totalSalary)}`;
-        } else if (totalPresentBonus > 0) {
-            // Show: Gross + Bonus = Total
-            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(totalPresentBonus)} = ${formatCurrency(totalSalary)}`;
+            // Has absents: Show (Gross - Deduction) + ৳0 = Total
+            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
+        } else if (monthlyPresentBonus > 0) {
+            // No absents: Show Gross + Bonus = Total
+            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(monthlyPresentBonus)} = ${formatCurrency(totalSalary)}`;
         } else {
-            // Show: Gross = Total (no bonus, no deductions)
+            // No bonus set
             salaryDisplay = formatCurrency(totalSalary);
         }
 
@@ -1471,6 +1465,7 @@ function selectAttendanceType(type, element) {
 }
 
 function updatePresentCalculation() {
+    // Note: Present bonus is calculated monthly (end of month), not shown in daily preview
     const otHours = parseInt(document.getElementById('ot-hours').value) || 0;
     const totalHours = 8 + otHours;
 
