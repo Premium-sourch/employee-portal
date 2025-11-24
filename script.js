@@ -230,11 +230,25 @@ function formatBanglaNumber(num) {
 
     formatted = toBanglaNumber(formatted);
 
-    if (parts.length > 1) {
+    // Add decimal part if exists AND is not "00"
+    if (parts.length > 1 && parts[1] !== '00') {
         formatted += '.' + toBanglaNumber(parts[1]);
     }
 
     return formatted;
+}
+// Format number with decimals (for non-currency values)
+function formatNumber(num, decimals = 2) {
+    const value = parseFloat(num) || 0;
+    
+    // Check if number has meaningful decimals
+    const hasDecimals = value % 1 !== 0;
+    
+    if (hasDecimals) {
+        return formatBanglaNumber(value.toFixed(decimals));
+    } else {
+        return formatBanglaNumber(Math.round(value));
+    }
 }
 
 function showToast(message, type = 'info') {
@@ -373,8 +387,20 @@ function switchView(viewName) {
 }
 
 function formatCurrency(amount) {
-    const formatted = parseFloat(amount).toFixed(0);
-    return `৳${formatBanglaNumber(formatted)}`;
+    const num = parseFloat(amount) || 0;
+    
+    // Check if number has meaningful decimals
+    const hasDecimals = num % 1 !== 0;
+    
+    if (hasDecimals) {
+        // Show 2 decimal places
+        const formatted = num.toFixed(2);
+        return `৳${formatBanglaNumber(formatted)}`;
+    } else {
+        // Show whole number only
+        const formatted = Math.round(num);
+        return `৳${formatBanglaNumber(formatted)}`;
+    }
 }
 
 
@@ -1113,7 +1139,7 @@ async function loadMonthlyStats() {
         }
 
         document.getElementById('stat-total-salary').textContent = salaryDisplay;
-        document.getElementById('stat-total-ot').textContent = formatBanglaNumber(stats.totalOTHours.toFixed(1)) + 'ঘন্টা';
+        document.getElementById('stat-total-ot').textContent = formatNumber(stats.totalOTHours, 1) + 'ঘন্টা';
         document.getElementById('stat-ot-amount').textContent = formatCurrency(stats.totalOTAmount);
         document.getElementById('stat-present').textContent = formatBanglaNumber(stats.presentDays);
         document.getElementById('stat-absent').textContent = formatBanglaNumber(stats.absentDays);
@@ -1154,9 +1180,9 @@ async function loadWorkHistory() {
                 <tr data-date="${recordDate}">
                     <td>${formatDate(recordDate)}</td>
                     <td><span class="status-badge status-${record.status}">${getBanglaStatus(record.status)}</span></td>
-                    <td>${record.workHours ? formatBanglaNumber(record.workHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
-                    <td>${record.otHours ? formatBanglaNumber(record.otHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
-                    <td>${totalHours > 0 ? formatBanglaNumber(totalHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
+                    <td>${record.workHours ? formatNumber(record.workHours, 1) + 'ঘন্টা' : '-'}</td>
+                    <td>${record.otHours ? formatNumber(record.otHours, 1) + 'ঘন্টা' : '-'}</td>
+                    <td>${totalHours > 0 ? formatNumber(totalHours, 1) + 'ঘন্টা' : '-'}</td>
                     <td>${record.earned ? formatCurrency(record.earned) : '-'}</td>
                     <td>${record.deduction ? formatCurrency(record.deduction) : '-'}</td>
                     <td>
