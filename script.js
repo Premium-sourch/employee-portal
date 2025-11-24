@@ -230,25 +230,11 @@ function formatBanglaNumber(num) {
 
     formatted = toBanglaNumber(formatted);
 
-    // Add decimal part if exists AND is not "00"
-    if (parts.length > 1 && parts[1] !== '00') {
+    if (parts.length > 1) {
         formatted += '.' + toBanglaNumber(parts[1]);
     }
 
     return formatted;
-}
-// Format number with decimals (for non-currency values)
-function formatNumber(num, decimals = 2) {
-    const value = parseFloat(num) || 0;
-    
-    // Check if number has meaningful decimals
-    const hasDecimals = value % 1 !== 0;
-    
-    if (hasDecimals) {
-        return formatBanglaNumber(value.toFixed(decimals));
-    } else {
-        return formatBanglaNumber(Math.round(value));
-    }
 }
 
 function showToast(message, type = 'info') {
@@ -387,20 +373,8 @@ function switchView(viewName) {
 }
 
 function formatCurrency(amount) {
-    const num = parseFloat(amount) || 0;
-    
-    // Check if number has meaningful decimals
-    const hasDecimals = num % 1 !== 0;
-    
-    if (hasDecimals) {
-        // Show 2 decimal places
-        const formatted = num.toFixed(2);
-        return `৳${formatBanglaNumber(formatted)}`;
-    } else {
-        // Show whole number only
-        const formatted = Math.round(num);
-        return `৳${formatBanglaNumber(formatted)}`;
-    }
+    const formatted = parseFloat(amount).toFixed(0);
+    return `৳${formatBanglaNumber(formatted)}`;
 }
 
 
@@ -1108,32 +1082,38 @@ async function loadMonthlyStats() {
         const data = await apiRequest(`attendance/stats?month=${selectedMonth}`);
         const stats = data.stats;
 
+     // ✅ FIXED: Calculate base gross salary (per month)
         const grossSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
                            (currentUser.profile.medical || 750) +
                            (currentUser.profile.transport || 450) +
                            (currentUser.profile.food || 1250);
 
-        // ✅ FIXED: Use monthly present bonus from backend (not daily calculation)
-        const monthlyPresentBonus = stats.presentBonus || 0;
-        const netAfterDeduction = grossSalary - stats.totalDeduction;
-        const totalSalary = netAfterDeduction + monthlyPresentBonus;
+        // Calculate present bonus (presentBonus × presentDays)
+        const totalPresentBonus = (currentUser.profile.presentBonus || 0) * stats.presentDays;
 
-        // Display logic
+        // If there are absent days, deduct from gross salary
+        const netAfterDeduction = grossSalary - stats.totalDeduction;
+
+        // Total salary = (gross - deductions) + (present bonus × days)
+        const totalSalary = netAfterDeduction + totalPresentBonus;
+
+        // Display format: Gross ± Deductions + Bonus = Total
         let salaryDisplay;
+
         if (stats.absentDays > 0) {
-            // Has absents: Show (Gross - Deduction) + ৳0 = Total
-            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
-        } else if (monthlyPresentBonus > 0) {
-            // No absents: Show Gross + Bonus = Total
-            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(monthlyPresentBonus)} = ${formatCurrency(totalSalary)}`;
+            // Show: (Gross - Deduction) + Bonus = Total
+            salaryDisplay = `${formatCurrency(netAfterDeduction)} + ${formatCurrency(totalPresentBonus)} = ${formatCurrency(totalSalary)}`;
+        } else if (totalPresentBonus > 0) {
+            // Show: Gross + Bonus = Total
+            salaryDisplay = `${formatCurrency(grossSalary)} + ${formatCurrency(totalPresentBonus)} = ${formatCurrency(totalSalary)}`;
         } else {
-            // No bonus set
+            // Show: Gross = Total (no bonus, no deductions)
             salaryDisplay = formatCurrency(totalSalary);
         }
 
         document.getElementById('stat-total-salary').textContent = salaryDisplay;
-        document.getElementById('stat-total-ot').textContent = formatNumber(stats.totalOTHours, 1) + 'ঘন্টা';
+        document.getElementById('stat-total-ot').textContent = formatBanglaNumber(stats.totalOTHours.toFixed(1)) + 'ঘন্টা';
         document.getElementById('stat-ot-amount').textContent = formatCurrency(stats.totalOTAmount);
         document.getElementById('stat-present').textContent = formatBanglaNumber(stats.presentDays);
         document.getElementById('stat-absent').textContent = formatBanglaNumber(stats.absentDays);
@@ -1174,9 +1154,9 @@ async function loadWorkHistory() {
                 <tr data-date="${recordDate}">
                     <td>${formatDate(recordDate)}</td>
                     <td><span class="status-badge status-${record.status}">${getBanglaStatus(record.status)}</span></td>
-                    <td>${record.workHours ? formatNumber(record.workHours, 1) + 'ঘন্টা' : '-'}</td>
-                    <td>${record.otHours ? formatNumber(record.otHours, 1) + 'ঘন্টা' : '-'}</td>
-                    <td>${totalHours > 0 ? formatNumber(totalHours, 1) + 'ঘন্টা' : '-'}</td>
+                    <td>${record.workHours ? formatBanglaNumber(record.workHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
+                    <td>${record.otHours ? formatBanglaNumber(record.otHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
+                    <td>${totalHours > 0 ? formatBanglaNumber(totalHours.toFixed(1)) + 'ঘন্টা' : '-'}</td>
                     <td>${record.earned ? formatCurrency(record.earned) : '-'}</td>
                     <td>${record.deduction ? formatCurrency(record.deduction) : '-'}</td>
                     <td>
@@ -1465,7 +1445,6 @@ function selectAttendanceType(type, element) {
 }
 
 function updatePresentCalculation() {
-    // Note: Present bonus is calculated monthly (end of month), not shown in daily preview
     const otHours = parseInt(document.getElementById('ot-hours').value) || 0;
     const totalHours = 8 + otHours;
 
