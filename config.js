@@ -93,4 +93,5 @@ const CONFIG = {
 // Make config available globally (if needed)
 if (typeof window !== 'undefined') {
     window.APP_CONFIG = CONFIG;
+
 }
