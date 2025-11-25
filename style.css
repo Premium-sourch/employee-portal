@@ -1035,7 +1035,7 @@ body {
 }
 
 .card-body {
-    padding: 24px;
+    padding: 4px;
 }
 
 /* Profile View - Glass Effect */
@@ -1891,7 +1891,6 @@ body {
     }
 
     .card-header {
-        flex-direction: column;
         align-items: flex-start;
     }
 
