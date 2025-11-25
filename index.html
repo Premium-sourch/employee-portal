@@ -782,6 +782,38 @@
         </div>
     </div>
 
+	<!-- Action Loading Modal -->
+	<div id="action-loading-modal" class="action-modal">
+	    <div class="action-modal-content">
+	        <div class="action-modal-icon" id="action-modal-icon">
+	            <div class="spinner"></div>
+	        </div>
+	        <h3 id="action-modal-title">অপেক্ষা করুন</h3>
+	        <p id="action-modal-message">রেকর্ড আপডেট হচ্ছে...</p>
+	    </div>
+	</div>
+	
+	<!-- Delete Confirmation Modal -->
+	<div id="delete-confirm-modal" class="action-modal">
+	    <div class="delete-confirm-content">
+	        <div class="delete-confirm-icon">
+	            <i class="fas fa-exclamation-triangle"></i>
+	        </div>
+	        <h3>রেকর্ড মুছে ফেলবেন?</h3>
+	        <p>আপনি কি নিশ্চিত যে <strong id="delete-confirm-date"></strong> তারিখের রেকর্ড মুছে ফেলতে চান?</p>
+	        <p class="delete-warning">এই কাজটি পূর্বাবস্থায় ফেরানো যাবে না।</p>
+	        <div class="delete-confirm-actions">
+	            <button class="btn btn-outline" id="delete-cancel-btn">
+	                <i class="fas fa-times"></i>
+	                বাতিল
+	            </button>
+	            <button class="btn btn-danger" id="delete-confirm-btn">
+	                <i class="fas fa-trash-alt"></i>
+	                হ্যাঁ, মুছে ফেলুন
+	            </button>
+	        </div>
+	    </div>
+	</div>
     <!-- Enhanced Loading Screen -->
     <div id="loading-screen" class="screen">
         <div class="loading-content">
