@@ -1491,9 +1491,15 @@ function selectAttendanceType(type, element) {
 }
 
 function updatePresentCalculation() {
-    // Note: Present bonus is calculated monthly (end of month), not shown in daily preview
     const otHours = parseInt(document.getElementById('ot-hours').value) || 0;
-    const totalHours = 8 + otHours;
+    const workHours = 8; // Base work hours
+    const totalHours = workHours + otHours;
+
+    // Update all preview fields with Bangla numbers
+    const previewWork = document.getElementById('preview-work');
+    if (previewWork) {
+        previewWork.textContent = `${formatBanglaNumber(workHours)} ঘন্টা`;
+    }
 
     document.getElementById('preview-ot').textContent = `${formatBanglaNumber(otHours)} ঘন্টা`;
     document.getElementById('preview-total').textContent = `${formatBanglaNumber(totalHours)} ঘন্টা`;
