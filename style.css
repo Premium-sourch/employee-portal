@@ -1376,7 +1376,7 @@ body {
 }
 
 .modal-body {
-    padding: 24px;
+    padding: 15px;
 }
 
 .modal-step {
@@ -1468,7 +1468,7 @@ body {
 .calculation-preview {
     background: rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(15px);
-    padding: 20px;
+    padding: 5px 20px;
     border-radius: var(--radius);
     margin: 20px 0;
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1735,7 +1735,7 @@ body {
 /* Form Elements in Dashboard - Glass Effect */
 #dashboard-screen .form-group input,
 #dashboard-screen .form-group select {
-    padding: 12px 16px;
+    padding: 10px 15px;
     border: 2px solid rgba(255, 255, 255, 0.2);
     border-radius: var(--radius);
     font-size: 15px;
