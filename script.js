@@ -1399,6 +1399,7 @@ function initFAB() {
     fabBtn.addEventListener('click', () => {
         modal.classList.add('active');
         resetModal();
+        updatePresentCalculation();
     });
 
     // Close modal
@@ -1455,10 +1456,34 @@ function resetModal() {
 
     document.getElementById('step-1').classList.add('active');
 
-   // Reset attendance option buttons
-document.querySelectorAll('.attendance-option-btn').forEach(btn => {
-    btn.classList.remove('active');
-});
+    // Reset attendance option buttons
+    document.querySelectorAll('.attendance-option-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+
+    // Pre-select "উপস্থিত" (present) by default
+    const presentBtn = document.querySelector('.attendance-option-btn[data-type="present"]');
+    if (presentBtn) {
+        presentBtn.classList.add('active');
+    }
+
+    document.querySelectorAll('#present-form, #absent-form, #offday-form, #leave-form').forEach(form => {
+        form.reset();
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('input[type="date"]').forEach(input => {
+        input.value = today;
+    });
+
+    // ✅ ADD THIS - Reset calculation preview with Bangla numbers
+    const previewWork = document.getElementById('preview-work');
+    if (previewWork) {
+        previewWork.textContent = '৮ ঘন্টা';
+    }
+    
+    updatePresentCalculation();
+}
 
 // Pre-select "উপস্থিত" (present) by default
 const presentBtn = document.querySelector('.attendance-option-btn[data-type="present"]');
@@ -1495,12 +1520,7 @@ function updatePresentCalculation() {
     const workHours = 8; // Base work hours
     const totalHours = workHours + otHours;
 
-    // Update all preview fields with Bangla numbers
-    const previewWork = document.getElementById('preview-work');
-    if (previewWork) {
-        previewWork.textContent = `${formatBanglaNumber(workHours)} ঘন্টা`;
-    }
-
+    // Update preview with Bangla numbers
     document.getElementById('preview-ot').textContent = `${formatBanglaNumber(otHours)} ঘন্টা`;
     document.getElementById('preview-total').textContent = `${formatBanglaNumber(totalHours)} ঘন্টা`;
 
