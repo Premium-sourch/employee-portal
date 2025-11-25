@@ -1839,6 +1839,7 @@ body {
 
     .setup-card {
         padding: 24px;
+        max-height: none;
     }
 
     .content-header {
