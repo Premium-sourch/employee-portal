@@ -1485,24 +1485,6 @@ function resetModal() {
     updatePresentCalculation();
 }
 
-// Pre-select "উপস্থিত" (present) by default
-const presentBtn = document.querySelector('.attendance-option-btn[data-type="present"]');
-if (presentBtn) {
-    presentBtn.classList.add('active');
-}
-
-    document.querySelectorAll('#present-form, #absent-form, #offday-form, #leave-form').forEach(form => {
-        form.reset();
-    });
-
-    const today = new Date().toISOString().split('T')[0];
-    document.querySelectorAll('input[type="date"]').forEach(input => {
-        input.value = today;
-    });
-
-    updatePresentCalculation();
-}
-
 function selectAttendanceType(type, element) {
     currentAttendanceType = type;
 
