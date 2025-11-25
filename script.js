@@ -1208,6 +1208,115 @@ async function loadWorkHistory() {
 }
 
 // ============================================================================
+// Action Loading Modal Functions
+// ============================================================================
+
+function showActionModal(title, message, type = 'loading') {
+    const modal = document.getElementById('action-loading-modal');
+    const modalContent = modal.querySelector('.action-modal-content');
+    const icon = document.getElementById('action-modal-icon');
+    const titleEl = document.getElementById('action-modal-title');
+    const messageEl = document.getElementById('action-modal-message');
+
+    // Reset classes
+    modalContent.classList.remove('success', 'error');
+    icon.classList.remove('success', 'error');
+
+    // Set content
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+
+    if (type === 'loading') {
+        icon.innerHTML = '<div class="spinner"></div>';
+    } else if (type === 'success') {
+        modalContent.classList.add('success');
+        icon.classList.add('success');
+        icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+    } else if (type === 'error') {
+        modalContent.classList.add('error');
+        icon.classList.add('error');
+        icon.innerHTML = '<i class="fas fa-times-circle"></i>';
+    }
+
+    modal.classList.add('active');
+}
+
+function hideActionModal(delay = 0) {
+    const modal = document.getElementById('action-loading-modal');
+    
+    setTimeout(() => {
+        modal.classList.remove('active');
+    }, delay);
+}
+
+function updateActionModal(title, message, type) {
+    const modalContent = document.querySelector('.action-modal-content');
+    const icon = document.getElementById('action-modal-icon');
+    const titleEl = document.getElementById('action-modal-title');
+    const messageEl = document.getElementById('action-modal-message');
+
+    // Remove old classes
+    modalContent.classList.remove('success', 'error');
+    icon.classList.remove('success', 'error');
+
+    // Update content
+    titleEl.textContent = title;
+    messageEl.textContent = message;
+
+    if (type === 'success') {
+        modalContent.classList.add('success');
+        icon.classList.add('success');
+        icon.innerHTML = '<i class="fas fa-check-circle"></i>';
+    } else if (type === 'error') {
+        modalContent.classList.add('error');
+        icon.classList.add('error');
+        icon.innerHTML = '<i class="fas fa-times-circle"></i>';
+    }
+}
+
+/**
+ * Show custom delete confirmation modal
+ */
+function showDeleteConfirmation(date) {
+  return new Promise((resolve) => {
+    const modal = document.getElementById('delete-confirm-modal');
+    const dateText = document.getElementById('delete-confirm-date');
+    const confirmBtn = document.getElementById('delete-confirm-btn');
+    const cancelBtn = document.getElementById('delete-cancel-btn');
+
+    dateText.textContent = formatDate(date);
+    modal.classList.add('active');
+
+    const handleConfirm = () => {
+      cleanup();
+      resolve(true);
+    };
+
+    const handleCancel = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    const cleanup = () => {
+      modal.classList.remove('active');
+      confirmBtn.removeEventListener('click', handleConfirm);
+      cancelBtn.removeEventListener('click', handleCancel);
+      modal.removeEventListener('click', handleBackdropClick);
+    };
+
+    const handleBackdropClick = (e) => {
+      if (e.target === modal) {
+        handleCancel();
+      }
+    };
+
+    confirmBtn.addEventListener('click', handleConfirm);
+    cancelBtn.addEventListener('click', handleCancel);
+    modal.addEventListener('click', handleBackdropClick);
+  });
+}
+
+// ============================================================================
 // Optimistic UI Updates - For Faster Perceived Performance
 // ============================================================================
 
@@ -1247,9 +1356,6 @@ function optimisticAddRecord(record) {
         )) || 0;
         absentStat.textContent = formatBanglaNumber(current + 1);
     }
-
-    // Add visual feedback
-    showToast('✨ রেকর্ড যুক্ত হচ্ছে...', 'info');
 }
 
 /**
@@ -1277,10 +1383,8 @@ function optimisticDeleteRecord(date) {
 }
 
 async function deleteAttendanceRecord(date) {
-  // ✅ STEP 1: Clean and format date to YYYY-MM-DD
   let formattedDate = String(date).trim();
   
-  // Remove time component
   if (formattedDate.includes('T')) {
     formattedDate = formattedDate.split('T')[0];
   }
@@ -1290,58 +1394,54 @@ async function deleteAttendanceRecord(date) {
   
   console.log('🗑️ Delete - Formatted date:', formattedDate);
   
-  // ✅ STEP 2: Validate format
   if (!/^\d{4}-\d{2}-\d{2}$/.test(formattedDate)) {
     showToast('তারিখ ফরম্যাট সমস্যা', 'error');
     console.error('Invalid date format:', formattedDate);
     return;
   }
 
-  // ✅ STEP 3: Confirm deletion
-  const confirmMsg = `আপনি কি ${formatDate(formattedDate)} তারিখের রেকর্ড মুছে ফেলতে চান?`;
-  if (!confirm(confirmMsg)) {
+  // Show custom confirmation modal
+  const confirmed = await showDeleteConfirmation(formattedDate);
+  if (!confirmed) {
     return;
   }
 
   try {
     console.log('🗑️ Sending delete request for date:', formattedDate);
 
-    // ✅ STEP 4: Optimistic UI update (remove from display immediately)
-    optimisticDeleteRecord(formattedDate);
-    showToast('🗑️ রেকর্ড মুছে ফেলা হচ্ছে...', 'info');
+    // Show action modal
+    showActionModal('অপেক্ষা করুন', 'রেকর্ড মুছে ফেলা হচ্ছে...', 'loading');
 
-    // ✅ STEP 5: Send delete request to backend
-    const response = await apiRequest('attendance/delete', {
+    // Optimistic UI update
+    optimisticDeleteRecord(formattedDate);
+
+    // Send delete request to backend
+    await apiRequest('attendance/delete', {
       method: 'POST',
       body: { date: formattedDate }
     });
 
-    console.log('✅ Delete response:', response);
+    console.log('✅ Delete successful');
+
+    // Refresh data
+    await Promise.all([
+      loadMonthlyStats(),
+      loadWorkHistory(),
+      loadAvailableMonths(),
+      populateMonthSelect()
+    ]);
+
+    console.log('✅ Data refreshed after delete');
 
     // Show success
-    showToast('✅ রেকর্ড মুছে ফেলা হয়েছে!', 'success');
-
-    // ✅ STEP 6: Refresh data in background
-    setTimeout(async () => {
-      try {
-        await Promise.all([
-          loadMonthlyStats(),
-          loadWorkHistory(),
-          loadAvailableMonths(),
-          populateMonthSelect()
-        ]);
-        console.log('✅ Data refreshed after delete');
-      } catch (err) {
-        console.error('Background refresh error:', err);
-        showToast('📄 পেজ রিলোড করুন', 'warning');
-      }
-    }, 500);
+    updateActionModal('সম্পন্ন!', 'রেকর্ড সফলভাবে মুছে ফেলা হয়েছে', 'success');
+    hideActionModal(2000);
 
   } catch (error) {
     console.error('❌ Delete error:', error);
-    showToast(error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
+    updateActionModal('ত্রুটি!', error.message || 'রেকর্ড মুছতে সমস্যা হয়েছে', 'error');
+    hideActionModal(3000);
 
-    // Reload to show correct data
     await Promise.all([
       loadMonthlyStats(),
       loadWorkHistory()
@@ -1544,76 +1644,67 @@ async function handlePresentSubmit(event) {
         return;
     }
 
-    const selectedDate = new Date(date + 'T00:00:00'); // Force local timezone
+    const selectedDate = new Date(date + 'T00:00:00');
     const isFriday = selectedDate.getDay() === 5;
-
-    // ✅ Check if record already exists for this date
     const existingRecord = checkIfRecordExists(date);
     const isUpdate = existingRecord !== null;
 
     try {
-  // Close modal immediately for better UX
-  closeModal();
+        // Close modal immediately
+        closeModal();
 
-  // Check if record exists
-  const existingRecord = checkIfRecordExists(date);
-  const isUpdate = existingRecord !== null;
+        // Show action modal
+        if (isUpdate) {
+            showActionModal('অপেক্ষা করুন', 'রেকর্ড আপডেট হচ্ছে...', 'loading');
+        } else {
+            showActionModal('অপেক্ষা করুন', 'নতুন রেকর্ড যুক্ত হচ্ছে...', 'loading');
+        }
 
-  // Show appropriate message
-  if (isUpdate) {
-    showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
-  } else {
-    showToast('➕ নতুন রেকর্ড যুক্ত হচ্ছে...', 'info');
-  }
+        // Optimistic update
+        optimisticUpdateUI('add', {
+            status: 'present',
+            date: date,
+            otHours: otHours,
+            isFriday: isFriday
+        });
 
-  // Optimistic update
-  optimisticUpdateUI('add', {
-    status: 'present',
-    date: date,
-    otHours: otHours,
-    isFriday: isFriday
-  });
+        // Send to server
+        await apiRequest('attendance/present', {
+            method: 'POST',
+            body: {
+                date: date,
+                otHours: otHours,
+                isFriday: isFriday,
+                workHours: isFriday ? 0 : 8,
+                totalHours: isFriday ? otHours : (8 + otHours)
+            }
+        });
 
-  // Send to server
-  const requestPromise = apiRequest('attendance/present', {
-    method: 'POST',
-    body: {
-      date: date,
-      otHours: otHours,
-      isFriday: isFriday,
-      workHours: isFriday ? 0 : 8,
-      totalHours: isFriday ? otHours : (8 + otHours)
+        // Refresh data
+        await Promise.all([
+            loadMonthlyStats(),
+            loadWorkHistory(),
+            loadAvailableMonths(),
+            populateMonthSelect()
+        ]);
+
+        // Show success
+        if (isUpdate) {
+            updateActionModal('সম্পন্ন!', 'রেকর্ড সফলভাবে আপডেট হয়েছে', 'success');
+        } else {
+            updateActionModal('সম্পন্ন!', 'উপস্থিতি সফলভাবে রেকর্ড হয়েছে', 'success');
+        }
+
+        // Auto-hide after 2 seconds
+        hideActionModal(2000);
+
+    } catch (error) {
+        updateActionModal('ত্রুটি!', error.message || 'রেকর্ড করতে সমস্যা হয়েছে', 'error');
+        hideActionModal(3000);
+        
+        await loadMonthlyStats();
+        await loadWorkHistory();
     }
-  });
-
-  // Show success message
-  if (isUpdate) {
-    showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
-  } else {
-    showToast('✅ উপস্থিতি রেকর্ড হয়েছে!', 'success');
-  }
-
-  // Wait for server response
-  await requestPromise;
-
-  // Refresh data
-  setTimeout(() => {
-    Promise.all([
-      loadMonthlyStats(),
-      loadWorkHistory(),
-      loadAvailableMonths(),
-      populateMonthSelect()
-    ]).catch(err => {
-      console.error('Background refresh error:', err);
-      showToast('🔄 ডেটা রিফ্রেশ করতে পেজ রিলোড করুন', 'warning');
-    });
-  }, 500);
-
-} catch (error) {
-  showToast(error.message, 'error');
-  await loadMonthlyStats();
-  await loadWorkHistory();
-}
 }
 // Helper function to check if record exists for a date
 function checkIfRecordExists(date) {
@@ -1653,14 +1744,14 @@ async function handleAbsentSubmit(event) {
         closeModal();
         
         if (isUpdate) {
-            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
+            showActionModal('অপেক্ষা করুন', 'রেকর্ড আপডেট হচ্ছে...', 'loading');
         } else {
-            showToast('➕ অনুপস্থিতি রেকর্ড করা হচ্ছে...', 'info');
+            showActionModal('অপেক্ষা করুন', 'অনুপস্থিতি রেকর্ড করা হচ্ছে...', 'loading');
         }
 
         optimisticUpdateUI('add', { date, reason, status: 'absent' });
 
-        const promise = apiRequest('attendance/absent', {
+        await apiRequest('attendance/absent', {
             method: 'POST',
             body: {
                 date: date,
@@ -1668,25 +1759,24 @@ async function handleAbsentSubmit(event) {
             }
         });
 
+        await Promise.all([
+            loadMonthlyStats(),
+            loadWorkHistory(),
+            loadAvailableMonths(),
+            populateMonthSelect()
+        ]);
+
         if (isUpdate) {
-            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
+            updateActionModal('সম্পন্ন!', 'রেকর্ড সফলভাবে আপডেট হয়েছে', 'success');
         } else {
-            showToast('✅ অনুপস্থিতি রেকর্ড হয়েছে!', 'warning');
+            updateActionModal('সম্পন্ন!', 'অনুপস্থিতি সফলভাবে রেকর্ড হয়েছে', 'success');
         }
 
-        await promise;
-
-        setTimeout(() => {
-            Promise.all([
-                loadMonthlyStats(),
-                loadWorkHistory(),
-                loadAvailableMonths(),
-                populateMonthSelect()
-            ]);
-        }, 500);
+        hideActionModal(2000);
 
     } catch (error) {
-        showToast(error.message, 'error');
+        updateActionModal('ত্রুটি!', error.message || 'রেকর্ড করতে সমস্যা হয়েছে', 'error');
+        hideActionModal(3000);
         await loadMonthlyStats();
         await loadWorkHistory();
     }
