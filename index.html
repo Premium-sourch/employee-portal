@@ -634,49 +634,23 @@
                 </div>
                 <div class="modal-body">
                     <!-- Step 1: Select Attendance Type -->
-                    <div id="step-1" class="modal-step active">
-                        <div class="attendance-options">
-                            <div class="attendance-option" data-type="present">
-                                <div class="option-icon success">
-                                    <i class="fas fa-check-circle"></i>
-                                </div>
-                                <div class="option-content">
-                                    <h4>উপস্থিত</h4>
-                                    <p>আজ কাজ করেছেন</p>
-                                </div>
-                            </div>
-
-                            <div class="attendance-option" data-type="absent">
-                                <div class="option-icon danger">
-                                    <i class="fas fa-times-circle"></i>
-                                </div>
-                                <div class="option-content">
-                                    <h4>অনুপস্থিত</h4>
-                                    <p>কাজে আসতে পারেননি</p>
-                                </div>
-                            </div>
-
-                            <div class="attendance-option" data-type="offday">
-                                <div class="option-icon info">
-                                    <i class="fas fa-umbrella-beach"></i>
-                                </div>
-                                <div class="option-content">
-                                    <h4>ছুটির দিন</h4>
-                                    <p>সাপ্তাহিক বা সরকারি ছুটি</p>
-                                </div>
-                            </div>
-
-                            <div class="attendance-option" data-type="leave">
-                                <div class="option-icon warning">
-                                    <i class="fas fa-calendar-alt"></i>
-                                </div>
-                                <div class="option-content">
-                                    <h4>ছুটি নিন</h4>
-                                    <p>ব্যক্তিগত ছুটি</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+					<div id="step-1" class="modal-step active">
+					    <div class="attendance-options-horizontal">
+					        <div class="attendance-option-btn active" data-type="present">
+					            <div class="option-icon success">
+					                <i class="fas fa-check-circle"></i>
+					            </div>
+					            <span>উপস্থিত</span>
+					        </div>
+					        
+					        <div class="attendance-option-btn" data-type="absent">
+					            <div class="option-icon danger">
+					                <i class="fas fa-times-circle"></i>
+					            </div>
+					            <span>অনুপস্থিত</span>
+					        </div>
+					    </div>
+					</div>
 
                     <!-- Step 2: Present Details -->
                     <div id="step-2-present" class="modal-step">
