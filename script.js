@@ -1410,10 +1410,20 @@ function initFAB() {
     });
 
     // Attendance type selection
-    attendanceOptions.forEach(option => {
-        option.addEventListener('click', () => {
-            const type = option.dataset.type;
-            selectAttendanceType(type, option);
+    // Attendance type selection (simplified - horizontal buttons)
+    const attendanceOptionBtns = document.querySelectorAll('.attendance-option-btn');
+    attendanceOptionBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const type = btn.dataset.type;
+            
+            // Remove active from all buttons
+            attendanceOptionBtns.forEach(b => b.classList.remove('active'));
+            
+            // Add active to clicked button
+            btn.classList.add('active');
+            
+            // Immediately go to the form for selected type
+            selectAttendanceType(type, btn);
         });
     });
 
@@ -1445,9 +1455,16 @@ function resetModal() {
 
     document.getElementById('step-1').classList.add('active');
 
-    document.querySelectorAll('.attendance-option').forEach(option => {
-        option.classList.remove('selected');
-    });
+   // Reset attendance option buttons
+document.querySelectorAll('.attendance-option-btn').forEach(btn => {
+    btn.classList.remove('active');
+});
+
+// Pre-select "উপস্থিত" (present) by default
+const presentBtn = document.querySelector('.attendance-option-btn[data-type="present"]');
+if (presentBtn) {
+    presentBtn.classList.add('active');
+}
 
     document.querySelectorAll('#present-form, #absent-form, #offday-form, #leave-form').forEach(form => {
         form.reset();
@@ -1464,18 +1481,13 @@ function resetModal() {
 function selectAttendanceType(type, element) {
     currentAttendanceType = type;
 
-    document.querySelectorAll('.attendance-option').forEach(option => {
-        option.classList.remove('selected');
-    });
-
-    element.classList.add('selected');
-
+    // Hide step 1, show step 2 for the selected type
     setTimeout(() => {
         document.querySelectorAll('.modal-step').forEach(step => {
             step.classList.remove('active');
         });
         document.getElementById(`step-2-${type}`).classList.add('active');
-    }, 300);
+    }, 150);
 }
 
 function updatePresentCalculation() {
