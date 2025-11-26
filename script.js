@@ -427,20 +427,22 @@ function formatDate(dateStr) {
             // Create date in LOCAL timezone
             const d = new Date(year, month, day);
             
-            return d.toLocaleDateString('bn-BD', {
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric'
-            });
+            // ✅ SHORT FORMAT: DD/MM/YY
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const yy = String(d.getFullYear()).slice(-2);
+            
+            // Convert to Bangla digits
+            return toBanglaNumber(`${dd}/${mm}/${yy}`);
         }
     }
 
     const d = new Date(dateStr);
-    return d.toLocaleDateString('bn-BD', {
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric'
-    });
+    const dd = String(d.getDate()).padStart(2, '0');
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const yy = String(d.getFullYear()).slice(-2);
+    
+    return toBanglaNumber(`${dd}/${mm}/${yy}`);
 }
 // ============================================================================
 // Salary Auto-Calculation Functions
