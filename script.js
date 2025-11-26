@@ -1110,52 +1110,61 @@ function updateProfileView() {
 async function loadMonthlyStats() {
     try {
         const selectedMonth = document.getElementById('history-month-select').value || getCurrentMonth();
+        
+        // ✅ Get stats from backend
         const data = await apiRequest(`attendance/stats?month=${selectedMonth}`);
         const stats = data.stats;
 
-        // ✅ BASE COMPONENTS
+        // ✅ Calculate GROSS SALARY from profile components
         const grossSalary = (currentUser.profile.basicSalary || 0) +
                            (currentUser.profile.houseRent || 0) +
                            (currentUser.profile.medical || 750) +
                            (currentUser.profile.transport || 450) +
                            (currentUser.profile.food || 1250);
 
-        // ✅ MONTHLY PRESENT BONUS (from backend)
+        // ✅ Monthly present bonus (backend calculates this based on absents)
         const monthlyPresentBonus = stats.presentBonus || 0;
 
-        // ✅ NET AFTER DEDUCTION
+        // ✅ Net salary after deduction
         const netAfterDeduction = grossSalary - stats.totalDeduction;
 
-        // ✅ TOTAL SALARY CALCULATION
-        // Formula: (Gross - Deduction) + OT Amount + Present Bonus
+        // ✅ Total salary = Net + OT + Bonus
+        // NOTE: Backend already calculated totalOTAmount correctly, don't recalculate!
         const totalSalary = netAfterDeduction + stats.totalOTAmount + monthlyPresentBonus;
 
-        // ✅ DISPLAY FORMAT
-        // Combine Gross + OT first, then show bonus separately
-        let salaryDisplay;
-        
+        // ✅ Display format
         const grossPlusOT = netAfterDeduction + stats.totalOTAmount;
 
+        let salaryDisplay;
         if (stats.absentDays > 0) {
-            // HAS ABSENTS: Show (Net + OT) + ৳0 = Total
+            // Has absents: Show (Net + OT) + ৳0 = Total
             salaryDisplay = `${formatCurrency(grossPlusOT)} + ${formatCurrency(0)} = ${formatCurrency(totalSalary)}`;
         } else if (monthlyPresentBonus > 0) {
-            // NO ABSENTS + HAS BONUS: Show (Gross + OT) + Bonus = Total
+            // No absents + has bonus: Show (Gross + OT) + Bonus = Total
             salaryDisplay = `${formatCurrency(grossPlusOT)} + ${formatCurrency(monthlyPresentBonus)} = ${formatCurrency(totalSalary)}`;
         } else {
-            // NO ABSENTS + NO BONUS: Just show (Gross + OT)
+            // No absents + no bonus: Just show (Gross + OT)
             salaryDisplay = formatCurrency(grossPlusOT);
         }
 
-        // Update UI
+        // ✅ Update UI - Use backend values directly
         document.getElementById('stat-total-salary').textContent = salaryDisplay;
         document.getElementById('stat-total-ot').textContent = formatNumber(stats.totalOTHours, 1) + 'ঘন্টা';
-        document.getElementById('stat-ot-amount').textContent = formatCurrency(stats.totalOTAmount);
+        document.getElementById('stat-ot-amount').textContent = formatCurrency(stats.totalOTAmount); // ✅ From backend
         document.getElementById('stat-present').textContent = formatBanglaNumber(stats.presentDays);
         document.getElementById('stat-absent').textContent = formatBanglaNumber(stats.absentDays);
         document.getElementById('stat-deduction').textContent = formatCurrency(stats.totalDeduction);
+
+        console.log('📊 Stats loaded successfully');
+        console.log('  - Gross: ৳' + grossSalary);
+        console.log('  - Deduction: ৳' + stats.totalDeduction);
+        console.log('  - OT Amount: ৳' + stats.totalOTAmount); // Backend calculated
+        console.log('  - Present Bonus: ৳' + monthlyPresentBonus);
+        console.log('  - Total: ৳' + totalSalary);
+
     } catch (error) {
         console.error('Stats load error:', error);
+        showToast('পরিসংখ্যান লোড করতে ত্রুটি', 'error');
     }
 }
 
@@ -1538,8 +1547,6 @@ function initFAB() {
     // Form submissions
     document.getElementById('present-form').addEventListener('submit', handlePresentSubmit);
     document.getElementById('absent-form').addEventListener('submit', handleAbsentSubmit);
-    document.getElementById('offday-form').addEventListener('submit', handleOffdaySubmit);
-    document.getElementById('leave-form').addEventListener('submit', handleLeaveSubmit);
 }
 
 function closeModal() {
@@ -1651,17 +1658,17 @@ async function handlePresentSubmit(event) {
     const isUpdate = existingRecord !== null;
 
     try {
-        // Close modal immediately
+        // ✅ STEP 1: Close modal immediately
         closeModal();
 
-        // Show action modal
+        // ✅ STEP 2: Show loading modal
         if (isUpdate) {
             showActionModal('অপেক্ষা করুন', 'রেকর্ড আপডেট হচ্ছে...', 'loading');
         } else {
             showActionModal('অপেক্ষা করুন', 'নতুন রেকর্ড যুক্ত হচ্ছে...', 'loading');
         }
 
-        // Optimistic update
+        // ✅ STEP 3: Optimistic UI update
         optimisticUpdateUI('add', {
             status: 'present',
             date: date,
@@ -1669,7 +1676,7 @@ async function handlePresentSubmit(event) {
             isFriday: isFriday
         });
 
-        // Send to server
+        // ✅ STEP 4: Send to server
         await apiRequest('attendance/present', {
             method: 'POST',
             body: {
@@ -1681,7 +1688,7 @@ async function handlePresentSubmit(event) {
             }
         });
 
-        // Refresh data
+        // ✅ STEP 5: Refresh data
         await Promise.all([
             loadMonthlyStats(),
             loadWorkHistory(),
@@ -1689,20 +1696,22 @@ async function handlePresentSubmit(event) {
             populateMonthSelect()
         ]);
 
-        // Show success
+        // ✅ STEP 6: Show success
         if (isUpdate) {
             updateActionModal('সম্পন্ন!', 'রেকর্ড সফলভাবে আপডেট হয়েছে', 'success');
         } else {
             updateActionModal('সম্পন্ন!', 'উপস্থিতি সফলভাবে রেকর্ড হয়েছে', 'success');
         }
 
-        // Auto-hide after 2 seconds
+        // ✅ STEP 7: Auto-hide after 2 seconds
         hideActionModal(2000);
 
     } catch (error) {
+        // ✅ Show error in modal
         updateActionModal('ত্রুটি!', error.message || 'রেকর্ড করতে সমস্যা হয়েছে', 'error');
         hideActionModal(3000);
         
+        // Refresh to show correct state
         await loadMonthlyStats();
         await loadWorkHistory();
     }
@@ -1725,9 +1734,6 @@ function checkIfRecordExists(date) {
   return null; // No record found
 }
 
-// Also update handleAbsentSubmit, handleOffdaySubmit, and handleLeaveSubmit
-// with the same pattern (checking for existing records)
-
 async function handleAbsentSubmit(event) {
     event.preventDefault();
 
@@ -1739,19 +1745,27 @@ async function handleAbsentSubmit(event) {
         return;
     }
 
-    const isUpdate = checkIfRecordExists(date) !== null;
+    const existingRecord = checkIfRecordExists(date);
+    const isUpdate = existingRecord !== null;
 
     try {
+        // ✅ STEP 1: Close modal immediately
         closeModal();
-        
+
+        // ✅ STEP 2: Show loading modal
         if (isUpdate) {
             showActionModal('অপেক্ষা করুন', 'রেকর্ড আপডেট হচ্ছে...', 'loading');
         } else {
             showActionModal('অপেক্ষা করুন', 'অনুপস্থিতি রেকর্ড করা হচ্ছে...', 'loading');
         }
 
-        optimisticUpdateUI('add', { date, reason, status: 'absent' });
+        // ✅ STEP 3: Optimistic UI update
+        optimisticUpdateUI('add', {
+            status: 'absent',
+            date: date
+        });
 
+        // ✅ STEP 4: Send to server
         await apiRequest('attendance/absent', {
             method: 'POST',
             body: {
@@ -1760,6 +1774,7 @@ async function handleAbsentSubmit(event) {
             }
         });
 
+        // ✅ STEP 5: Refresh data
         await Promise.all([
             loadMonthlyStats(),
             loadWorkHistory(),
@@ -1767,236 +1782,24 @@ async function handleAbsentSubmit(event) {
             populateMonthSelect()
         ]);
 
+        // ✅ STEP 6: Show success
         if (isUpdate) {
             updateActionModal('সম্পন্ন!', 'রেকর্ড সফলভাবে আপডেট হয়েছে', 'success');
         } else {
-            updateActionModal('সম্পন্ন!', 'অনুপস্থিতি সফলভাবে রেকর্ড হয়েছে', 'success');
+            updateActionModal('সম্পন্ন!', 'অনুপস্থিতি রেকর্ড হয়েছে', 'warning');
         }
 
+        // ✅ STEP 7: Auto-hide after 2 seconds
         hideActionModal(2000);
 
     } catch (error) {
+        // ✅ Show error in modal
         updateActionModal('ত্রুটি!', error.message || 'রেকর্ড করতে সমস্যা হয়েছে', 'error');
         hideActionModal(3000);
-        await loadMonthlyStats();
-        await loadWorkHistory();
-    }
-}
-
-async function handleOffdaySubmit(event) {
-    event.preventDefault();
-
-    const date = document.getElementById('offday-date').value;
-    const type = document.getElementById('offday-type').value;
-
-    if (!date) {
-        showToast('তারিখ নির্বাচন করুন', 'error');
-        return;
-    }
-
-    const isUpdate = checkIfRecordExists(date) !== null;
-
-    try {
-        closeModal();
         
-        if (isUpdate) {
-            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
-        } else {
-            showToast('➕ ছুটি রেকর্ড করা হচ্ছে...', 'info');
-        }
-
-        optimisticUpdateUI('add', { date, type, status: 'offday' });
-
-        const promise = apiRequest('attendance/offday', {
-            method: 'POST',
-            body: { date, type }
-        });
-
-        if (isUpdate) {
-            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
-        } else {
-            showToast('✅ ছুটি রেকর্ড হয়েছে!', 'success');
-        }
-
-        await promise;
-
-        setTimeout(() => {
-            Promise.all([
-                loadMonthlyStats(),
-                loadWorkHistory(),
-                loadAvailableMonths(),
-                populateMonthSelect()
-            ]);
-        }, 500);
-
-    } catch (error) {
-        showToast(error.message, 'error');
+        // Refresh to show correct state
         await loadMonthlyStats();
         await loadWorkHistory();
-    }
-}
-
-async function handleLeaveSubmit(event) {
-    event.preventDefault();
-
-    const date = document.getElementById('leave-date').value;
-    const type = document.getElementById('leave-type').value;
-
-    if (!date) {
-        showToast('তারিখ নির্বাচন করুন', 'error');
-        return;
-    }
-
-    const isUpdate = checkIfRecordExists(date) !== null;
-
-    try {
-        closeModal();
-        
-        if (isUpdate) {
-            showToast('🔄 রেকর্ড আপডেট হচ্ছে...', 'info');
-        } else {
-            showToast('➕ ছুটি রেকর্ড করা হচ্ছে...', 'info');
-        }
-
-        optimisticUpdateUI('add', { date, type, status: 'leave' });
-
-        const promise = apiRequest('attendance/leave', {
-            method: 'POST',
-            body: { date, type }
-        });
-
-        if (isUpdate) {
-            showToast('✅ রেকর্ড আপডেট হয়েছে!', 'success');
-        } else {
-            showToast('✅ ছুটি রেকর্ড হয়েছে!', 'success');
-        }
-
-        await promise;
-
-        setTimeout(() => {
-            Promise.all([
-                loadMonthlyStats(),
-                loadWorkHistory(),
-                loadAvailableMonths(),
-                populateMonthSelect()
-            ]);
-        }, 500);
-
-    } catch (error) {
-        showToast(error.message, 'error');
-        await loadMonthlyStats();
-        await loadWorkHistory();
-    }
-}
-
-async function handleAbsentSubmit(event) {
-    event.preventDefault();
-
-    const date = document.getElementById('absent-date').value;
-    const reason = sanitizeInput(document.getElementById('absent-reason').value);
-
-    if (!date) {
-        showToast('তারিখ নির্বাচন করুন', 'error');
-        return;
-    }
-
-    try {
-        showToast('অনুপস্থিতি রেকর্ড করা হচ্ছে...', 'info');
-
-        closeModal();
-        optimisticUpdateUI('absent', { date, reason });
-
-        const promise = apiRequest('attendance/absent', {
-            method: 'POST',
-            body: {
-                date: date,
-                reason: reason || 'কোন কারণ দেওয়া হয়নি'
-            }
-        });
-
-        showToast('অনুপস্থিতি রেকর্ড করা হয়েছে!', 'warning');
-
-        await promise;
-
-        loadMonthlyStats();
-        loadWorkHistory();
-        loadAvailableMonths();
-        populateMonthSelect();
-
-    } catch (error) {
-        showToast(error.message, 'error');
-    }
-}
-
-async function handleOffdaySubmit(event) {
-    event.preventDefault();
-
-    const date = document.getElementById('offday-date').value;
-    const type = document.getElementById('offday-type').value;
-
-    if (!date) {
-        showToast('তারিখ নির্বাচন করুন', 'error');
-        return;
-    }
-
-    try {
-        showToast('ছুটি রেকর্ড করা হচ্ছে...', 'info');
-
-        closeModal();
-        optimisticUpdateUI('offday', { date, type });
-
-        const promise = apiRequest('attendance/offday', {
-            method: 'POST',
-            body: { date, type }
-        });
-
-        showToast('ছুটি রেকর্ড করা হয়েছে!', 'success');
-
-        await promise;
-
-        loadMonthlyStats();
-        loadWorkHistory();
-        loadAvailableMonths();
-        populateMonthSelect();
-
-    } catch (error) {
-        showToast(error.message, 'error');
-    }
-}
-
-async function handleLeaveSubmit(event) {
-    event.preventDefault();
-
-    const date = document.getElementById('leave-date').value;
-    const type = document.getElementById('leave-type').value;
-
-    if (!date) {
-        showToast('তারিখ নির্বাচন করুন', 'error');
-        return;
-    }
-
-    try {
-        showToast('ছুটি রেকর্ড করা হচ্ছে...', 'info');
-
-        closeModal();
-        optimisticUpdateUI('leave', { date, type });
-
-        const promise = apiRequest('attendance/leave', {
-            method: 'POST',
-            body: { date, type }
-        });
-
-        showToast('ছুটি রেকর্ড করা হয়েছে!', 'success');
-
-        await promise;
-
-        loadMonthlyStats();
-        loadWorkHistory();
-        loadAvailableMonths();
-        populateMonthSelect();
-
-    } catch (error) {
-        showToast(error.message, 'error');
     }
 }
 
