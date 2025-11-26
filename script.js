@@ -1188,7 +1188,6 @@ async function loadWorkHistory() {
                 <tr data-date="${recordDate}">
                     <td>${formatDate(recordDate)}</td>
                     <td><span class="status-badge status-${record.status}">${getBanglaStatus(record.status)}</span></td>
-                    <td>${record.workHours ? formatNumber(record.workHours, 1) + 'ঘন্টা' : '-'}</td>
                     <td>${record.otHours ? formatNumber(record.otHours, 1) + 'ঘন্টা' : '-'}</td>
                     <td>${totalHours > 0 ? formatNumber(totalHours, 1) + 'ঘন্টা' : '-'}</td>
                     <td>${record.earned ? formatCurrency(record.earned) : '-'}</td>
