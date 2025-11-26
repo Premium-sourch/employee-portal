@@ -1805,9 +1805,12 @@ body {
 }
 
 /* Responsive Design */
+/* Responsive Design */
 @media (max-width: 1024px) {
     .sidebar {
         transform: translateX(-100%);
+        position: fixed;
+        z-index: 1001;
     }
 
     .sidebar.mobile-open {
@@ -1829,6 +1832,18 @@ body {
 
     .stats-grid {
         grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    }
+    
+    /* Mobile overlay for sidebar */
+    .sidebar.mobile-open::before {
+        content: '';
+        position: fixed;
+        top: 0;
+        left: 280px;
+        width: calc(100vw - 280px);
+        height: 100vh;
+        background: rgba(0, 0, 0, 0.5);
+        z-index: -1;
     }
 }
 
@@ -2373,6 +2388,10 @@ body {
    Action Loading Modal - FIXED CENTERING
    ============================================================================ */
 
+/* ============================================================================
+   Action Loading Modal - FIXED CENTERING
+   ============================================================================ */
+
 .action-modal {
     display: none;
     position: fixed;
@@ -2384,15 +2403,16 @@ body {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 10000;
+    /* ✅ CRITICAL FIX: These 3 lines center the modal */
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
 }
 
 .action-modal.active {
     display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
     animation: fadeIn 0.3s ease;
 }
-
 .action-modal-content {
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(20px);
