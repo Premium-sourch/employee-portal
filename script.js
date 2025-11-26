@@ -1164,7 +1164,7 @@ async function loadWorkHistory() {
         const tbody = document.getElementById('history-tbody');
 
         if (data.records.length === 0) {
-            tbody.innerHTML = '<tr><td colspan="8" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="6" class="text-center">কোন রেকর্ড পাওয়া যায়নি</td></tr>';
             return;
         }
 
