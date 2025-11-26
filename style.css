@@ -2370,7 +2370,7 @@ body {
     }
 }
 /* ============================================================================
-   Action Loading Modal
+   Action Loading Modal - FIXED CENTERING
    ============================================================================ */
 
 .action-modal {
@@ -2384,12 +2384,12 @@ body {
     backdrop-filter: blur(8px);
     -webkit-backdrop-filter: blur(8px);
     z-index: 10000;
-    align-items: center;
-    justify-content: center;
 }
 
 .action-modal.active {
     display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
     animation: fadeIn 0.3s ease;
 }
 
