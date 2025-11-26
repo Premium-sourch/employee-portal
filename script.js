@@ -343,36 +343,36 @@ function switchScreen(screenId) {
 
 function switchView(viewName) {
     currentView = viewName;
-
+    
     document.querySelectorAll('.view').forEach(view => {
         view.classList.remove('active');
     });
-
+    
     const targetView = document.getElementById(`${viewName}-view`);
     if (targetView) {
         targetView.classList.add('active');
     }
-
+    
     document.querySelectorAll('.nav-link').forEach(link => {
         link.classList.remove('active');
     });
-
+    
     const activeLink = document.querySelector(`.nav-link[data-view="${viewName}"]`);
     if (activeLink) {
         activeLink.classList.add('active');
     }
-
+    
     const titles = {
         overview: { title: 'ড্যাশবোর্ড ওভারভিউ', subtitle: 'ফিরে আসার জন্য স্বাগতম! এখানে আপনার সারসংক্ষেপ' },
         history: { title: 'কাজের ইতিহাস', subtitle: 'আপনার উপস্থিতি রেকর্ড দেখুন' },
         profile: { title: 'আমার প্রোফাইল', subtitle: 'আপনার প্রোফাইল তথ্য দেখুন এবং পরিচালনা করুন' }
     };
-
+    
     if (titles[viewName]) {
         document.getElementById('page-title').textContent = titles[viewName].title;
         document.getElementById('page-subtitle').textContent = titles[viewName].subtitle;
     }
-
+    
     if (viewName === 'profile') {
         cancelEditProfile();
     } else {
@@ -380,7 +380,7 @@ function switchView(viewName) {
         document.getElementById('profile-edit-mode').style.display = 'none';
         toggleProfileEditButton(true);
     }
-
+    
     if (window.innerWidth <= 1024) {
         document.getElementById('sidebar').classList.remove('mobile-open');
     }
